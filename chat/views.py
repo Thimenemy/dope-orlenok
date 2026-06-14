@@ -176,8 +176,10 @@ def restore_for_user(request, room_id):
 @login_required
 def invite_to_group_chat(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
-    if room.room_type != 'group' or room.created_by != request.user:
-        messages.error(request, 'Только создатель чата может приглашать участников.')
+    # Разрешаем действие, если это группа И (пользователь — создатель ИЛИ он преподаватель)
+    is_teacher_user = request.user.groups.filter(name="Преподаватель").exists()
+    if room.room_type != 'group' or (room.created_by != request.user and not is_teacher_user):
+        messages.error(request, 'У вас нет прав для управления участниками этого чата.')
         return redirect('chat:chat_detail', room_id=room.id)
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
@@ -193,8 +195,10 @@ def invite_to_group_chat(request, room_id):
 @login_required
 def remove_from_group_chat(request, room_id, user_id):
     room = get_object_or_404(ChatRoom, id=room_id)
-    if room.room_type != 'group' or room.created_by != request.user:
-        messages.error(request, 'Только создатель чата может исключать участников.')
+    # Разрешаем действие, если это группа И (пользователь — создатель ИЛИ он преподаватель)
+    is_teacher_user = request.user.groups.filter(name="Преподаватель").exists()
+    if room.room_type != 'group' or (room.created_by != request.user and not is_teacher_user):
+        messages.error(request, 'У вас нет прав для управления участниками этого чата.')
         return redirect('chat:chat_detail', room_id=room.id)
     user_to_remove = get_object_or_404(User, id=user_id)
     if user_to_remove == room.created_by:

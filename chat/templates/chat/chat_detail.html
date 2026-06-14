@@ -334,16 +334,24 @@
         }
     };
 
-    // Исключение участника (динамический action)
-    document.getElementById('removeForm')?.addEventListener('submit', function(e) {
-        const select = this.querySelector('select[name="user_id"]');
-        const userId = select.value;
-        if (!userId) {
-            e.preventDefault();
-            alert('Выберите участника');
-            return;
+   // Изменяем action формы сразу при выборе пользователя в селекте
+    document.querySelector('#removeForm select[name="user_id"]')?.addEventListener('change', function() {
+        const userId = this.value;
+        const form = document.getElementById('removeForm');
+        if (userId) {
+            // Подставляем ID пользователя прямо в урл формы
+            form.action = `/chat/remove/${roomId}/${userId}/`;
+        } else {
+            form.action = "";
         }
-        this.action = "{% url 'chat:remove_from_group' room.id 0 %}".replace('0', userId);
+    });
+
+    // На всякий случай проверка при отправке
+    document.getElementById('removeForm')?.addEventListener('submit', function(e) {
+        if (!this.action || this.action.endsWith('/') && !this.action.includes('/remove/')) {
+            e.preventDefault();
+            alert('Пожалуйста, выберите участника для исключения');
+        }
     });
 
     attachModalHandlers();
