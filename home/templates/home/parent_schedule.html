@@ -1,0 +1,65 @@
+{% extends "home/base_auth.html" %}
+{% block title %}Расписание групп{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Расписание групп</h1>
+    {% if groups %}
+        <div class="row">
+            {% for group in groups %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ group.name }}</h5>
+                        <p class="card-text">
+                            <strong>Курс:</strong> {{ group.course.name }}<br>
+                            <strong>Период:</strong> {{ group.start_date|date:"d.m.Y" }} – {{ group.end_date|date:"d.m.Y" }}
+                        </p>
+                        {% if group.parent_children %}
+                            <div class="mb-2">
+                                <strong>Ваши дети в группе:</strong><br>
+                                {% for member in group.parent_children %}
+                                    {{ member.child.last_name }} {{ member.child.first_name }}
+                                    ({{ member.child.birth_date|date:"d.m.Y" }})
+                                    {% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <a href="{% url 'home:group_schedule_page' group.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-calendar-alt"></i> Посмотреть расписание
+                        </a>
+                    </div>
+                    <div id="schedule-container-{{ group.id }}" class="card-footer bg-white border-top-0" style="display: none;">
+                        <div class="schedule-content"></div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">Вы пока не записаны ни в одну группу.</div>
+    {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.show-schedule').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const groupId = this.dataset.groupId;
+        const container = document.getElementById(`schedule-container-${groupId}`);
+        const contentDiv = container.querySelector('.schedule-content');
+        if (container.style.display === 'none') {
+            // Скрываем все остальные контейнеры
+            document.querySelectorAll('[id^="schedule-container-"]').forEach(c => c.style.display = 'none');
+            // Загружаем расписание через AJAX
+            fetch(`/home/get_group_schedule/${groupId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    contentDiv.innerHTML = data.html;
+                    container.style.display = 'block';
+                });
+        } else {
+            container.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

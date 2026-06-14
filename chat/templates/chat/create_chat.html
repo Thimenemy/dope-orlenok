@@ -1,0 +1,15 @@
+{% extends base_template %}
+
+{% block title %}Создать чат{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Создать новый чат</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Создать</button>
+        <a href="{% url 'chat:chat_list' %}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

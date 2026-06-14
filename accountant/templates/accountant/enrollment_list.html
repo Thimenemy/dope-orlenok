@@ -1,0 +1,94 @@
+{% extends "accountant/base_accountant.html" %}
+
+{% block title %}Заявки{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Заявки</h1>
+
+<!-- Форма фильтров -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Родитель (ФИО)</label>
+                <input type="text" name="parent_name" class="form-control" value="{{ filter_parent }}" placeholder="Введите имя или фамилию">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Курс</label>
+                <select name="course" class="form-select">
+                    <option value="">Все курсы</option>
+                    {% for course in courses %}
+                        <option value="{{ course.id }}" {% if filter_course == course.id|stringformat:"s" %}selected{% endif %}>{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select">
+                    <option value="">Все активные</option>
+                    <option value="under_review" {% if selected_status == 'under_review' %}selected{% endif %}>На проверке документов</option>
+                    <option value="payment_review" {% if selected_status == 'payment_review' %}selected{% endif %}>Проверка оплаты</option>
+                    <!-- Можно добавить и другие статусы при необходимости -->
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Дата от</label>
+                <input type="date" name="date_from" class="form-control" value="{{ filter_date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Дата до</label>
+                <input type="date" name="date_to" class="form-control" value="{{ filter_date_to }}">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Фильтр</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица заявок -->
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Родитель</th>
+                <th>Ребёнок</th>
+                <th>Курс</th>
+                <th>Дата отправки</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for enrollment in enrollments %}
+            <tr>
+                <td>{{ enrollment.id }}</td>
+                <td>{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }} {{ enrollment.parent_middle_name }}</td>
+                <td>{{ enrollment.child_last_name }} {{ enrollment.child_first_name }} ({{ enrollment.child_birth_date|date:"d.m.Y" }})</td>
+                <td>{{ enrollment.course.name }}</td>
+                <td>{{ enrollment.submitted_at|date:"d.m.Y H:i" }}</td>
+                <td>
+                    <span class="badge 
+                        {% if enrollment.status == 'under_review' %}bg-info
+                        {% elif enrollment.status == 'payment_review' %}bg-warning text-dark
+                        {% elif enrollment.status == 'awaiting_payment' %}bg-primary
+                        {% elif enrollment.status == 'paid' %}bg-success
+                        {% elif enrollment.status == 'rejected' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {{ enrollment.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'accountant:enrollment_detail' enrollment.id %}" class="btn btn-sm btn-outline-primary">Открыть</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Нет заявок</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

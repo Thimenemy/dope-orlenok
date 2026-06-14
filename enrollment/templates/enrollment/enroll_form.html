@@ -1,0 +1,117 @@
+{% extends base_template %}
+
+{% block title %}{% if editing %}Редактирование заявки{% else %}Запись на курс {{ course.name }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h3 class="text-center mb-4">{% if editing %}Редактирование заявки{% else %}Запись на курс{% endif %}</h3>
+                    <p class="text-center text-muted mb-4">{{ course.name }}</p>
+
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Родитель (только чтение) -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">Родитель</h5>
+                            <div class="bg-light p-3 rounded">
+                                <div>{{ user.last_name }} {{ user.first_name }} {{ user.profile.middle_name|default:"" }}</div>
+                                <div>Дата рождения: {{ user.profile.birth_date|date:"d.m.Y"|default:"—" }}</div>
+                                <div>Телефон: {{ user.profile.phone|default:"—" }}</div>
+                                <div>Email: {{ user.email }}</div>
+                                <small class="text-muted">Для изменения данных <a href="{% url 'accounts:edit_profile' %}">отредактируйте профиль</a>.</small>
+                            </div>
+                        </div>
+
+                        <!-- Выбор ребёнка -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">Ребёнок</h5>
+                            {{ form.child_id }}
+                            {% if form.child_id.errors %}
+                                <div class="text-danger small mt-1">{{ form.child_id.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted">Нет нужного ребёнка? <a href="{% url 'accounts:add_child' %}" target="_blank">Добавить ребёнка</a></small>
+                        </div>
+
+                        <!-- Дополнительная информация -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">Дополнительная информация</h5>
+                            {{ form.additional_info }}
+                            {% if form.additional_info.errors %}
+                                <div class="text-danger small mt-1">{{ form.additional_info.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Документы (онлайн) – поля в ряд, каждое на 1/3 ширины -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">Загрузите документы онлайн</h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ form.parent_passport.label }}</label>
+                                    {{ form.parent_passport }}
+                                    {% if form.parent_passport.errors %}
+                                        <div class="text-danger small mt-1">{{ form.parent_passport.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ form.child_snils.label }}</label>
+                                    {{ form.child_snils }}
+                                    {% if form.child_snils.errors %}
+                                        <div class="text-danger small mt-1">{{ form.child_snils.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ form.child_birth_cert.label }}</label>
+                                    {{ form.child_birth_cert }}
+                                    {% if form.child_birth_cert.errors %}
+                                        <div class="text-danger small mt-1">{{ form.child_birth_cert.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Согласие (чекбокс) -->
+                        <div class="form-check mb-3">
+                            {{ form.consent }}
+                            <label class="form-check-label" for="{{ form.consent.id_for_label }}">
+                                Я даю согласие на обработку персональных данных
+                            </label>
+                            {% if form.consent.errors %}
+                                <div class="text-danger small mt-1">{{ form.consent.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Офлайн-альтернатива (выпадающее меню с кнопкой) -->
+                        <div class="alert alert-secondary mb-4">
+                            <i class="fas fa-building me-2"></i> <strong>Не можете загрузить документы онлайн?</strong>
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-2" data-bs-toggle="collapse" data-bs-target="#offlineDetails">
+                                Подробнее
+                            </button>
+                            <div class="collapse mt-2" id="offlineDetails">
+                                <p>Приходите лично в наше отделение:</p>
+                                <ul>
+                                    <li><strong>Адрес:</strong> 400086, г. Волгоград, Красноармейский район, улица Героев Малой Земли, 55</li>
+                                    <li><strong>Часы работы:</strong> пн-пт с 8:00 до 18:00</li>
+                                    <li><strong>При себе:</strong> паспорт родителя, СНИЛС ребёнка, свидетельство о рождении</li>
+                                </ul>
+                                <button type="submit" name="offline" value="1" class="btn btn-outline-success">
+                                    <i class="fas fa-hand-peace"></i> Я приду (оформить офлайн)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки управления -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% if editing %}{% url 'home:dashboard' %}{% else %}{% url 'main:course_list' %}{% endif %}" class="btn btn-outline-secondary btn-lg">Назад</a>
+                            <button type="submit" name="online" value="1" class="btn btn-primary btn-lg">Отправить онлайн</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

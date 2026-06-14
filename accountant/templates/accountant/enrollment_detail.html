@@ -1,0 +1,195 @@
+{% extends "accountant/base_accountant.html" %}
+
+{% block title %}Заявка #{{ enrollment.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Кнопка назад -->
+    <div class="mb-3">
+        <a href="{% url 'accountant:enrollment_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Назад к списку
+        </a>
+    </div>
+
+    <!-- Одна большая карточка заявки -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom-0 pt-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Заявка №{{ enrollment.id }}</h3>
+                <span class="badge 
+                    {% if enrollment.status == 'under_review' %}bg-info
+                    {% elif enrollment.status == 'payment_review' %}bg-warning text-dark
+                    {% elif enrollment.status == 'approved' %}bg-success
+                    {% else %}bg-secondary{% endif %} px-3 py-2">
+                    <i class="fas fa-tag"></i> {{ enrollment.get_status_display }}
+                </span>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+                <i class="fas fa-calendar-alt"></i> Создана: {{ enrollment.created_at|date:"d.m.Y H:i" }}
+                {% if enrollment.submitted_at %}
+                    | <i class="fas fa-paper-plane"></i> Отправлена: {{ enrollment.submitted_at|date:"d.m.Y H:i" }}
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="card-body pt-0">
+            <!-- Две колонки: родитель и ребёнок -->
+            <div class="row g-4">
+                <!-- Родитель -->
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100 bg-light">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-user"></i> Родитель
+                        </h5>
+                        <div class="row g-2">
+                            <div class="col-4 text-muted">Фамилия:</div>
+                            <div class="col-8 fw-semibold">{{ enrollment.parent_last_name }}</div>
+                            
+                            <div class="col-4 text-muted">Имя:</div>
+                            <div class="col-8 fw-semibold">{{ enrollment.parent_first_name }}</div>
+                            
+                            <div class="col-4 text-muted">Отчество:</div>
+                            <div class="col-8">{{ enrollment.parent_middle_name|default:"—" }}</div>
+                            
+                            <div class="col-4 text-muted">Email:</div>
+                            <div class="col-8">{{ enrollment.user.email }}</div>
+                            
+                            <div class="col-4 text-muted">Телефон:</div>
+                            <div class="col-8">{{ enrollment.user.profile.phone|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ребёнок -->
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100 bg-light">
+                        <h5 class="text-success mb-3">
+                            <i class="fas fa-child"></i> Ребёнок
+                        </h5>
+                        <div class="row g-2">
+                            <div class="col-4 text-muted">Фамилия:</div>
+                            <div class="col-8 fw-semibold">{{ enrollment.child_last_name }}</div>
+                            
+                            <div class="col-4 text-muted">Имя:</div>
+                            <div class="col-8 fw-semibold">{{ enrollment.child_first_name }}</div>
+                            
+                            <div class="col-4 text-muted">Отчество:</div>
+                            <div class="col-8">{{ enrollment.child_middle_name|default:"—" }}</div>
+                            
+                            <div class="col-4 text-muted">Дата рождения:</div>
+                            <div class="col-8">{{ enrollment.child_birth_date|date:"d.m.Y" }}</div>
+                            
+                            <div class="col-4 text-muted">Доп. информация:</div>
+                            <div class="col-8">{{ enrollment.additional_info|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Документы (только для under_review) -->
+            {% if enrollment.status == 'under_review' %}
+                <div class="mt-4">
+                    <h5 class="text-info mb-3">
+                        <i class="fas fa-file-alt"></i> Загруженные документы
+                    </h5>
+                    {% with docs=enrollment.documents.all %}
+                        {% if docs %}
+                            <div class="row g-3">
+                                {% for doc in docs %}
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center bg-white">
+                                        <i class="fas fa-file-pdf fa-3x text-danger mb-2"></i>
+                                        <h6 class="fw-bold mb-1">{{ doc.get_document_type_display }}</h6>
+                                        <small class="text-muted">{{ doc.file.name|slice:"-25" }}</small>
+                                        <hr>
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> Открыть
+                                            </a>
+                                            <a href="{{ doc.file.url }}" download class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-download"></i> Скачать
+                                            </a>
+                                        </div>
+                                        {% if doc.file.url|lower|slice:"-4:" == ".jpg" or doc.file.url|lower|slice:"-5:" == ".jpeg" or doc.file.url|lower|slice:"-4:" == ".png" %}
+                                            <div class="mt-2">
+                                                <img src="{{ doc.file.url }}" class="img-fluid img-thumbnail" style="max-height: 80px;">
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted">Документы не загружены</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <!-- Форма действий -->
+                <div class="mt-4 pt-2 border-top">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Комментарий (при отклонении)</label>
+                            <textarea name="comment" class="form-control" rows="2" placeholder="Укажите причину отказа..."></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="action" value="approve" class="btn btn-success">
+                                <i class="fas fa-check"></i> Одобрить
+                            </button>
+                            <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
+                                <i class="fas fa-times"></i> Отклонить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+
+            <!-- Чек и действия для payment_review -->
+            {% if enrollment.status == 'payment_review' %}
+                <div class="mt-4">
+                    <h5 class="text-warning mb-3">
+                        <i class="fas fa-receipt"></i> Чек об оплате
+                    </h5>
+                    {% if enrollment.receipt %}
+                        <div class="border rounded p-3 text-center bg-white">
+                            {% if enrollment.receipt.url|lower|slice:"-4:" == ".jpg" or enrollment.receipt.url|lower|slice:"-5:" == ".jpeg" or enrollment.receipt.url|lower|slice:"-4:" == ".png" %}
+                                <img src="{{ enrollment.receipt.url }}" class="img-fluid img-thumbnail mb-3" style="max-height: 200px;">
+                            {% endif %}
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{{ enrollment.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> Открыть полностью
+                                </a>
+                                <a href="{{ enrollment.receipt.url }}" download class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-download"></i> Скачать
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Чек не загружен</p>
+                    {% endif %}
+                </div>
+
+                <!-- Форма действий -->
+                <div class="mt-4 pt-2 border-top">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Комментарий (при отклонении)</label>
+                            <textarea name="comment" class="form-control" rows="2" placeholder="Укажите причину отказа..."></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="action" value="confirm_payment" class="btn btn-success">
+                                <i class="fas fa-check"></i> Подтвертить оплату
+                            </button>
+                            <button type="submit" name="action" value="reject_payment" class="btn btn-outline-danger">
+                                <i class="fas fa-times"></i> Отклонить чек
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "teacher/base_teacher.html" %}
+{% block content %}
+<h2>{{ group.name }} – Расписание</h2>
+
+<!-- Форма создания расписания -->
+<div class="card mb-4">
+    <div class="card-header">Сгенерировать расписание</div>
+    <div class="card-body">
+        <form method="post" action="{% url 'teacher:generate_schedule' group.pk %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label>Дни недели:</label><br>
+                <label><input type="checkbox" name="weekdays" value="mon"> Пн</label>
+                <label><input type="checkbox" name="weekdays" value="tue"> Вт</label>
+                <label><input type="checkbox" name="weekdays" value="wed"> Ср</label>
+                <label><input type="checkbox" name="weekdays" value="thu"> Чт</label>
+                <label><input type="checkbox" name="weekdays" value="fri"> Пт</label>
+                <label><input type="checkbox" name="weekdays" value="sat"> Сб</label>
+                <label><input type="checkbox" name="weekdays" value="sun"> Вс</label>
+            </div>
+            <div class="mb-3">
+                <label>Время начала:</label>
+                <input type="time" name="start_time" required>
+            </div>
+            <div class="mb-3">
+                <label>Время окончания:</label>
+                <input type="time" name="end_time" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Создать</button>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица расписания -->
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Неделя</th>
+            <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for week in weeks %}
+        <tr>
+            <td>{{ week.start|date:"d.m" }} – {{ week.end|date:"d.m" }}</td>
+            {% for day_lessons in week.days %}
+            <td class="bg-light">
+                {% for lesson in day_lessons %}
+                    <div>{{ lesson.start_time|time:"H:i" }}-{{ lesson.end_time|time:"H:i" }}<br>
+                    {% if lesson.topic %}{{ lesson.topic }}{% else %}<em>нет темы</em>{% endif %}
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-secondary mt-1">✎</a>
+                {% empty %}
+                    —
+                {% endfor %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

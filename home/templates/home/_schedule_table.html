@@ -1,0 +1,35 @@
+{% load home_extras %}
+{% if weeks %}
+<div class="table-responsive mt-3">
+    <table class="table table-bordered text-center align-middle">
+        <thead>
+            <tr>
+                <th class="bg-light">День / Неделя</th>
+                {% for week in weeks %}
+                    <th class="bg-light">{{ week.start|date:"d.m" }} – {{ week.end|date:"d.m" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for day_name in weekday_names %}
+            <tr>
+                <th class="bg-light">{{ day_name }}</th>
+                {% for week in weeks %}
+                    {% with day_index=forloop.parentloop.counter0 %}
+                        {% with lessons=week.days|get_item:day_index %}
+                            {% with lesson=lessons|first %}
+                            <td class="{% if lesson.topic %}bg-success bg-opacity-25{% endif %}">
+                                {{ lesson.topic|default:"" }}
+                            </td>
+                            {% endwith %}
+                        {% endwith %}
+                    {% endwith %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info">Расписание не задано</div>
+{% endif %}

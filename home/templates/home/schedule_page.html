@@ -1,0 +1,13 @@
+{% extends "home/base_auth.html" %}
+{% load home_extras %}  {# или teacher_extras, если перенесёте #}
+{% block title %}Расписание группы {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Расписание группы "{{ group.name }}"</h2>
+        <a href="{% url 'home:parent_schedule' %}" class="btn btn-secondary">Назад</a>
+    </div>
+    {% include "home/_schedule_table.html" %}
+</div>
+{% endblock %}

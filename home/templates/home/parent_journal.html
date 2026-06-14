@@ -1,0 +1,69 @@
+{% extends "home/base_auth.html" %}
+{% block title %}Успеваемость детей{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Журнал успеваемости</h2>
+
+    {% if children %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-auto">
+                        <label for="childSelect" class="form-label">Выберите ребенка</label>
+                        <select name="child_id" id="childSelect" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Выберите --</option>
+                            {% for child in children %}
+                                <option value="{{ child.id }}" {% if selected_child.id == child.id %}selected{% endif %}>
+                                    {{ child.last_name }} {{ child.first_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if selected_child %}
+            <h4 class="mb-3">{{ selected_child.last_name }} {{ selected_child.first_name }}</h4>
+            {% if journal_entries %}
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Дата</th>
+                                <th>Группа</th>
+                                <th>Время занятия</th>
+                                <th>Посещаемость</th>
+                                <th>Оценка</th>
+                                <th>Комментарий</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in journal_entries %}
+                            <tr>
+                                <td>{{ entry.schedule.date|date:"d.m.Y" }}</td>
+                                <td>{{ entry.schedule.group.name }}</td>
+                                <td>{{ entry.schedule.topic|default:"—" }}</td>
+                                <td>
+                                    {% if entry.attendance %}
+                                        <span class="badge bg-success">Присутствовал</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Отсутствовал</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ entry.grade|default:"—" }}</td>
+                                <td>{{ entry.comment|default:"—" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Нет записей успеваемости для этого ребенка.</div>
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <div class="alert alert-warning">У вас нет добавленных детей.</div>
+    {% endif %}
+</div>
+{% endblock %}

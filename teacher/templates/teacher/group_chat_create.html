@@ -1,0 +1,20 @@
+{% extends "teacher/base_teacher.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4>Чат группы "{{ group.name }}"</h4>
+        </div>
+        <div class="card-body text-center">
+            <p>Общий чат для этой группы ещё не создан.</p>
+            <form method="post" action="{% url 'teacher:create_group_chat_for_group' group.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-users"></i> Создать чат группы
+                </button>
+                <a href="{% url 'teacher:group_detail' group.id %}" class="btn btn-secondary btn-lg">Назад</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

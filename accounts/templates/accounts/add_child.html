@@ -1,0 +1,43 @@
+{% extends "home/base_auth.html" %}
+{% block title %}Редактирование профиля ребенка{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Данные ребенка</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Фамилия</label>
+                            {{ form.last_name }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Имя</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Отчество</label>
+                            {{ form.middle_name }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата рождения</label>
+                            {{ form.birth_date }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Пол</label>
+                            {{ form.gender }}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <a href="{% url 'home:dashboard' %}" class="btn btn-secondary">Отмена</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

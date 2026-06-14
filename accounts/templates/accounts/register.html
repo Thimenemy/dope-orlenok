@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h3 class="text-center mb-4">Регистрация</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+
+                    <div class="mb-3">
+                        <label for="id_email" class="form-label">Электронная почта</label>
+                        <input type="email" name="email" class="form-control" value="{{ form.email.value|default:'' }}" id="id_email" required>
+                        {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_phone" class="form-label">Контактный телефон</label>
+                        <input type="text" name="phone" class="form-control" value="{{ form.phone.value|default:'' }}" id="id_phone" required>
+                        {% if form.phone.errors %}
+                            <div class="text-danger small">{{ form.phone.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password1" class="form-label">Пароль</label>
+                        <input type="password" name="password1" class="form-control" value="{{ form.password1.value|default:'' }}" id="id_password1" required>
+                        {% if form.password1.errors %}
+                            <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password2" class="form-label">Подтверждение пароля</label>
+                        <input type="password" name="password2" class="form-control" value="{{ form.password2.value|default:'' }}" id="id_password2" required>
+                        {% if form.password2.errors %}
+                            <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="license_accepted" class="form-check-input" id="id_license_accepted" required>
+                        <label class="form-check-label" for="id_license_accepted">Я принимаю Лицензионное соглашение</label>
+                        {% if form.license_accepted.errors %}
+                            <div class="text-danger small">{{ form.license_accepted.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="consent_given" class="form-check-input" id="id_consent_given" required>
+                        <label class="form-check-label" for="id_consent_given">Я даю согласие на обработку своих персональных данных и соглашаюсь с Политикой конфиденциальности</label>
+                        {% if form.consent_given.errors %}
+                            <div class="text-danger small">{{ form.consent_given.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+                </form>
+                <p class="text-center mt-3">
+                    Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войдите</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block title %}Мои группы{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Мои группы</h1>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+        <i class="fas fa-plus"></i> Создать группу
+    </button>
+</div>
+
+<div class="row g-4">
+    {% for group in groups %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ group.name }}</h5>
+                <p class="card-text">
+                    <strong>Курс:</strong> {{ group.course.name }}<br>
+                    <strong>Даты:</strong> {{ group.start_date|date:"d.m.Y" }} – {{ group.end_date|date:"d.m.Y" }}<br>
+                    <strong>Учеников:</strong> {{ group.members.count }} / {{ group.max_students }}
+                </p>
+                <a href="{% url 'teacher:group_detail' group.pk %}" class="btn btn-outline-primary btn-sm">Подробнее</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><p class="text-muted">Групп пока нет. Создайте первую группу.</p></div>
+    {% endfor %}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">Новая группа</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">{{ form.as_p }}</div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

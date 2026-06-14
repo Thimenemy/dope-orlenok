@@ -1,0 +1,351 @@
+{% extends base_template %}
+
+{% block title %}Чат: {{ room.name|default:"Личный чат" }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                {% if room.room_type == 'group' %}
+                    <h4 class="mb-0">{{ room.name|default:"Групповой чат" }}</h4>
+                    <small class="text-muted" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#participantsModal">
+                        <i class="fas fa-users"></i> Участников: {{ room.participants.count }}
+                    </small>
+                {% else %}
+                    <h4 class="mb-0">
+                        {% if other_participant.get_full_name %}
+                            {{ other_participant.get_full_name }}
+                        {% else %}
+                            {{ other_participant.username }}
+                        {% endif %}
+                    </h4>
+                {% endif %}
+            </div>
+            <div>
+                {% if room.room_type == 'group' and room.created_by == user or is_teacher %}
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#inviteModal">Пригласить</a></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#removeModal">Исключить</a></li>
+                        </ul>
+                    </div>
+                {% endif %}
+                <a href="{% if back_url %}{{ back_url }}{% else %}{% url 'chat:chat_list' %}{% endif %}" class="btn btn-secondary btn-sm ms-2">
+                    <i class="fas fa-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div id="chat-messages" style="height: 400px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
+                {% for msg in messages %}
+                    <div class="mb-2 d-flex justify-content-between align-items-start" data-msg-id="{{ msg.id }}">
+                        <div>
+                            <strong>{{ msg.sender.username }}:</strong>
+                            <span class="message-content">{{ msg.content }}</span>
+                            {% if msg.edited %}<small class="text-muted">(ред.)</small>{% endif %}
+                            <small class="text-muted">{{ msg.timestamp|date:"H:i d.m.Y" }}</small>
+                            {% if msg.attachment %}
+                                <div class="mt-1">
+                                    {% if msg.attachment_type == 'image' %}
+                                        <a href="{{ msg.attachment.url }}" target="_blank">
+                                            <img src="{{ msg.attachment.url }}" style="max-width: 200px;">
+                                        </a>
+                                    {% elif msg.attachment_type == 'video' %}
+                                        <video controls src="{{ msg.attachment.url }}" style="max-width: 300px;"></video>
+                                    {% else %}
+                                        <a href="{{ msg.attachment.url }}" target="_blank">📎 Скачать файл</a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% if msg.sender == user %}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">⋮</button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
+                                    <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Форма отправки сообщения с кнопкой прикрепления файла -->
+            <div class="input-group">
+                <textarea id="chat-message-input" class="form-control" rows="2" placeholder="Введите сообщение..."></textarea>
+                <input type="file" id="chat-file-input" style="display: none;">
+                <button class="btn btn-outline-secondary" type="button" id="attach-file-btn">📎</button>
+                <button class="btn btn-primary" type="button" id="chat-message-submit">Отправить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модал участников (только для группы) -->
+{% if room.room_type == 'group' %}
+<div class="modal fade" id="participantsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Участники чата</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group">
+                    {% for p in room.participants.all %}
+                        <li class="list-group-item">
+                            {% if p.get_full_name %}{{ p.get_full_name }}{% else %}{{ p.username }}{% endif %}
+                            {% if p == room.created_by %}<span class="badge bg-primary ms-2">Создатель</span>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Модал приглашения -->
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'chat:invite_to_group' room.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Пригласить участника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <select name="user_id" class="form-select" required>
+                        <option value="">-- Выберите пользователя --</option>
+                        {% for p in available_users %}
+                            <option value="{{ p.id }}">{{ p.get_full_name|default:p.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Пригласить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модал исключения -->
+<div class="modal fade" id="removeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="" id="removeForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Исключить участника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <select name="user_id" class="form-select" required>
+                        <option value="">-- Выберите участника --</option>
+                        {% for participant in room.participants.all %}
+                            {% if participant != room.created_by %}
+                                <option value="{{ participant.id }}">{{ participant.get_full_name|default:participant.username }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">Исключить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модал редактирования сообщения -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="" id="editForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать сообщение</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea name="content" id="editContent" class="form-control" rows="3" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модал удаления сообщения -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="" id="deleteForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Удалить сообщение</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить это сообщение?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const roomId = {{ room.id }};
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/chat/${roomId}/`;
+    const chatSocket = new WebSocket(wsUrl);
+    const messagesDiv = document.getElementById('chat-messages');
+    const csrfToken = '{{ csrf_token }}';
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function renderMessage(data, isMine) {
+        const div = document.createElement('div');
+        div.className = 'mb-2 d-flex justify-content-between align-items-start';
+        div.setAttribute('data-msg-id', data.id);
+        let contentHtml = `<div><strong>${escapeHtml(data.sender)}:</strong> <span class="message-content">${escapeHtml(data.content)}</span>`;
+        if (data.edited) contentHtml += ` <small class="text-muted">(ред.)</small>`;
+        contentHtml += `<small class="text-muted">${data.timestamp}</small>`;
+        if (data.attachment_url) {
+            let attHtml = '';
+            if (data.attachment_type === 'image') {
+                attHtml = `<div><a href="${escapeHtml(data.attachment_url)}" target="_blank"><img src="${escapeHtml(data.attachment_url)}" style="max-width: 200px;"></a></div>`;
+            } else if (data.attachment_type === 'video') {
+                attHtml = `<div><video controls src="${escapeHtml(data.attachment_url)}" style="max-width: 300px;"></video></div>`;
+            } else {
+                attHtml = `<div><a href="${escapeHtml(data.attachment_url)}" target="_blank">📎 Скачать файл</a></div>`;
+            }
+            contentHtml += attHtml;
+        }
+        contentHtml += `</div>`;
+        div.innerHTML = contentHtml;
+        if (isMine) {
+            const dropdown = document.createElement('div');
+            dropdown.className = 'dropdown';
+            dropdown.innerHTML = `
+                <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">⋮</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
+                    <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="${data.id}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
+                </ul>
+            `;
+            div.appendChild(dropdown);
+        }
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        // Привязываем обработчики к новым кнопкам
+        attachModalHandlers();
+    }
+
+    function attachModalHandlers() {
+        document.querySelectorAll('.edit-msg-btn').forEach(btn => {
+            btn.removeEventListener('click', editHandler);
+            btn.addEventListener('click', editHandler);
+        });
+        document.querySelectorAll('.delete-msg-btn').forEach(btn => {
+            btn.removeEventListener('click', deleteHandler);
+            btn.addEventListener('click', deleteHandler);
+        });
+    }
+
+    function editHandler(e) {
+        const msgId = this.dataset.msgId;
+        const content = this.dataset.content;
+        document.getElementById('editContent').value = content;
+        document.getElementById('editForm').action = `/chat/edit_message/${msgId}/`;
+    }
+    function deleteHandler(e) {
+        const msgId = this.dataset.msgId;
+        document.getElementById('deleteForm').action = `/chat/delete_message/${msgId}/`;
+    }
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        // Определяем, принадлежит ли сообщение текущему пользователю
+        const isMine = (data.sender === "{{ user.username }}");
+        renderMessage(data, isMine);
+    };
+
+    function sendTextMessage() {
+        const input = document.getElementById('chat-message-input');
+        const message = input.value.trim();
+        if (message) {
+            chatSocket.send(JSON.stringify({type: 'message', message: message}));
+            input.value = '';
+        }
+    }
+
+    document.getElementById('chat-message-submit').onclick = sendTextMessage;
+    document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendTextMessage();
+        }
+    });
+
+    // Загрузка файлов
+    document.getElementById('attach-file-btn').onclick = () => {
+        document.getElementById('chat-file-input').click();
+    };
+    document.getElementById('chat-file-input').onchange = function(e) {
+        if (this.files.length) {
+            const file = this.files[0];
+            const formData = new FormData();
+            formData.append('attachment', file);
+            fetch(`/chat/upload/${roomId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.status !== 'ok') console.error('Upload error');
+              }).catch(err => console.error(err));
+            this.value = '';
+        }
+    };
+
+    // Исключение участника (динамический action)
+    document.getElementById('removeForm')?.addEventListener('submit', function(e) {
+        const select = this.querySelector('select[name="user_id"]');
+        const userId = select.value;
+        if (!userId) {
+            e.preventDefault();
+            alert('Выберите участника');
+            return;
+        }
+        this.action = "{% url 'chat:remove_from_group' room.id 0 %}".replace('0', userId);
+    });
+
+    attachModalHandlers();
+</script>
+{% endblock %}
