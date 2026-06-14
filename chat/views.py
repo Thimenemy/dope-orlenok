@@ -256,6 +256,7 @@ def upload_attachment(request, room_id):
             content='',
             attachment=file,
             attachment_type=att_type
+            
         )
         msg_data = {
             'id': msg.id,
@@ -265,6 +266,7 @@ def upload_attachment(request, room_id):
             'edited': False,
             'attachment_url': msg.attachment.url,
             'attachment_type': att_type,
+            'sender_full_name': request.user.get_full_name() if request.user.get_full_name() else request.user.username,
         }
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(

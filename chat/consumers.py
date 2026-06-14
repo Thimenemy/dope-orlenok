@@ -60,12 +60,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def message_to_dict(self, msg):
         attachment_url = None
         if msg.attachment:
-            # Если url не начинается с /media/, принудительно добавляем его
             attachment_url = msg.attachment.url if msg.attachment.url.startswith('http') or msg.attachment.url.startswith('/') else f'/media/{msg.attachment.name}'
+            
+        # Вычисляем имя и фамилию отправителя
+        full_name = msg.sender.get_full_name()
             
         return {
             'id': msg.id,
             'sender': msg.sender.username,
+            'sender_full_name': full_name if full_name else msg.sender.username, # <-- ДОБАВИЛИ ЭТУ СТРОКУ
             'content': msg.content,
             'timestamp': msg.timestamp.strftime('%H:%M %d.%m.%Y'),
             'edited': msg.edited,

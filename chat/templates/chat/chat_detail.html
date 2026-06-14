@@ -2,6 +2,85 @@
 
 {% block title %}Чат: {{ room.name|default:"Личный чат" }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Стили для цитирования ответов */
+    blockquote.reply-quote {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #0d6efd;
+        padding: 6px 10px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        font-size: 0.85rem;
+        border-radius: 0 6px 6px 0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    blockquote.reply-quote:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+    /* Эффект подсветки сообщения при переходе по ссылке-ответу */
+    .highlight-message {
+        animation: flash-highlight 1.5s ease-out;
+    }
+    @keyframes flash-highlight {
+        0% { background-color: rgba(13, 110, 253, 0.3); }
+        100% { background-color: transparent; }
+    }
+
+    /* --- НОВЫЕ СТИЛИ ДЛЯ РАЗДЕЛЕНИЯ ЧАТА ПРАВО/ЛЕВО И АВАТАРОК --- */
+    
+    /* Сетка сообщения */
+    .chat-message-row {
+        display: flex;
+        margin-bottom: 12px;
+        align-items: flex-end;
+        gap: 8px;
+    }
+    
+    /* Свои сообщения (справа) */
+    .message-mine {
+        flex-direction: row-reverse;
+    }
+    
+    /* Контейнер самого текста и вложений */
+    .message-bubble {
+        max-width: 70%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    /* Цвета блоков */
+    .message-mine .message-bubble {
+        background-color: #e1f5fe; /* Нежно-голубой для себя */
+        border-bottom-right-radius: 4px;
+    }
+    .message-other .message-bubble {
+        background-color: #f5f5f5; /* Светло-серый для остальных */
+        border-bottom-left-radius: 4px;
+    }
+
+    /* Круглый аватар-кружочек */
+    .chat-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        user-select: none;
+        flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="card">
@@ -41,42 +120,85 @@
         </div>
 
         <div class="card-body">
-            <div id="chat-messages" style="height: 400px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
+            <!-- Окно сообщений чата -->
+            <div id="chat-messages" style="height: 480px; overflow-y: scroll; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; scroll-behavior: smooth; background-color: #fafafa;">
                 {% for msg in messages %}
-                    <div class="mb-2 d-flex justify-content-between align-items-start" data-msg-id="{{ msg.id }}">
-                        <div>
-                            <strong>{{ msg.sender.username }}:</strong>
-                            <span class="message-content">{{ msg.content }}</span>
-                            {% if msg.edited %}<small class="text-muted">(ред.)</small>{% endif %}
-                            <small class="text-muted">{{ msg.timestamp|date:"H:i d.m.Y" }}</small>
-                            {% if msg.attachment %}
-                                <div class="mt-1">
-                                    {% if msg.attachment_type == 'image' %}
-                                        <a href="{{ msg.attachment.url }}" target="_blank">
-                                            <img src="{{ msg.attachment.url }}" style="max-width: 200px;">
-                                        </a>
-                                    {% elif msg.attachment_type == 'video' %}
-                                        <video controls src="{{ msg.attachment.url }}" style="max-width: 300px;"></video>
-                                    {% else %}
-                                        <a href="{{ msg.attachment.url }}" target="_blank">📎 Скачать файл</a>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
+                    <!-- Строка сообщения с классами позиционирования право/лево -->
+                    <div class="chat-message-row {% if msg.sender == user %}message-mine{% else %}message-other{% endif %}" id="msg-{{ msg.id }}" data-msg-id="{{ msg.id }}">
+                        
+                        <!-- Круглый аватар (генерируется цвет динамически по username) -->
+                        <div class="chat-avatar" data-username="{{ msg.sender.username }}">
+                            {% if msg.sender.first_name %}{{ msg.sender.first_name|slice:":1" }}{% else %}{{ msg.sender.username|slice:":1" }}{% endif %}
                         </div>
-                        {% if msg.sender == user %}
+
+                        <!-- Пузырь сообщения -->
+                        <div class="message-bubble d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <small class="text-primary d-block fw-bold mb-1">
+                                    {% if msg.sender.get_full_name %}
+                                        {{ msg.sender.get_full_name }}
+                                    {% else %}
+                                        {{ msg.sender.username }}
+                                    {% endif %}
+                                </small>
+                                
+                                <span class="message-content">{{ msg.content|safe }}</span>
+                                {% if msg.edited %}<small class="text-muted">(ред.)</small>{% endif %}
+                                <small class="text-muted d-block text-end mt-1" style="font-size: 0.75rem;">{{ msg.timestamp|date:"H:i" }}</small>
+                                
+                                {% if msg.attachment %}
+                                    <div class="mt-1 attachment-container">
+                                        {% if msg.attachment_type == 'image' %}
+                                            <a href="{{ msg.attachment.url }}" target="_blank">
+                                                <img src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 200px; border-radius: 8px;" class="chat-img-file">
+                                            </a>
+                                        {% elif msg.attachment_type == 'video' %}
+                                            <video controls src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 200px; border-radius: 8px;"></video>
+                                        {% else %}
+                                            <a href="{{ msg.attachment.url }}" target="_blank">📎 Скачать файл</a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Управление сообщением (троеточие) -->
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">⋮</button>
+                                <button class="btn btn-sm btn-link p-0 text-secondary" data-bs-toggle="dropdown">⋮</button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
-                                    <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
+                                    <li>
+                                        <a class="dropdown-item reply-msg-btn" href="#" 
+                                           data-msg-id="{{ msg.id }}"
+                                           data-sender="{% if msg.sender.get_full_name %}{{ msg.sender.get_full_name }}{% else %}{{ msg.sender.username }}{% endif %}" 
+                                           data-content="{{ msg.content|striptags }}"
+                                           data-has-file="{% if msg.attachment %}true{% else %}false{% endif %}"
+                                           data-file-type="{{ msg.attachment_type }}">
+                                            Ответить
+                                        </a>
+                                    </li>
+                                    {% if msg.sender == user %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
+                                        <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
+                                    {% endif %}
                                 </ul>
                             </div>
-                        {% endif %}
+                        </div>
+
                     </div>
                 {% endfor %}
             </div>
 
-            <!-- Форма отправки сообщения с кнопкой прикрепления файла -->
+            <!-- Блок превью ответа на сообщение -->
+            <div id="reply-preview-container" class="alert alert-secondary py-1 px-3 mb-2 d-none d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-reply text-primary me-2"></i>
+                    <small>Ответ пользователю <strong id="reply-user"></strong>:</small>
+                    <div id="reply-text" class="text-muted small text-truncate" style="max-width: 500px;"></div>
+                </div>
+                <button type="button" class="btn-close btn-sm" id="cancel-reply-btn" style="font-size: 0.75rem;"></button>
+            </div>
+
+            <!-- Форма ввода сообщения -->
             <div class="input-group">
                 <textarea id="chat-message-input" class="form-control" rows="2" placeholder="Введите сообщение..."></textarea>
                 <input type="file" id="chat-file-input" style="display: none;">
@@ -87,7 +209,7 @@
     </div>
 </div>
 
-<!-- Модал участников (только для группы) -->
+<!-- Модальные окна (без изменений) -->
 {% if room.room_type == 'group' %}
 <div class="modal fade" id="participantsModal" tabindex="-1">
     <div class="modal-dialog">
@@ -111,7 +233,6 @@
 </div>
 {% endif %}
 
-<!-- Модал приглашения -->
 <div class="modal fade" id="inviteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -138,7 +259,6 @@
     </div>
 </div>
 
-<!-- Модал исключения -->
 <div class="modal fade" id="removeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -167,7 +287,6 @@
     </div>
 </div>
 
-<!-- Модал редактирования сообщения -->
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -189,7 +308,6 @@
     </div>
 </div>
 
-<!-- Модал удаления сообщения -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -218,6 +336,37 @@
     const chatSocket = new WebSocket(wsUrl);
     const messagesDiv = document.getElementById('chat-messages');
     const csrfToken = '{{ csrf_token }}';
+    
+    const currentUserName = "{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}";
+    
+    let replyData = null;
+
+    // Палитра красивых цветов для аватарок
+    const colors = [
+        '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', 
+        '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', 
+        '#a1887f', '#90a4ae', '#e0a800', '#ff8a65'
+    ];
+
+    // Умная функция генерации цвета на основе хэша строки (username)
+    function stringToColor(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
+    }
+
+    // Красим все аватарки на странице
+    function colorizeAvatars() {
+        document.querySelectorAll('.chat-avatar').forEach(avatar => {
+            const username = avatar.getAttribute('data-username');
+            if (username) {
+                avatar.style.backgroundColor = stringToColor(username);
+            }
+        });
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -229,41 +378,100 @@
         });
     }
 
+    window.scrollToMessage = function(msgId) {
+        const targetElement = document.getElementById(`msg-${msgId}`);
+        if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetElement.classList.add('highlight-message');
+            setTimeout(() => {
+                targetElement.classList.remove('highlight-message');
+            }, 1500);
+        } else {
+            alert("Сообщение не найдено в текущей истории");
+        }
+    };
+
     function renderMessage(data, isMine) {
         const div = document.createElement('div');
-        div.className = 'mb-2 d-flex justify-content-between align-items-start';
+        // Задаем правильные стили сетки и позиционирования право/лево
+        div.className = `chat-message-row ${isMine ? 'message-mine' : 'message-other'}`;
         div.setAttribute('data-msg-id', data.id);
-        let contentHtml = `<div><strong>${escapeHtml(data.sender)}:</strong> <span class="message-content">${escapeHtml(data.content)}</span>`;
-        if (data.edited) contentHtml += ` <small class="text-muted">(ред.)</small>`;
-        contentHtml += `<small class="text-muted">${data.timestamp}</small>`;
+        div.setAttribute('id', `msg-${data.id}`);
+        
+        let displayName = data.sender_full_name ? data.sender_full_name : data.sender;
+        // Первая буква имени для аватара
+        let firstLetter = displayName.charAt(0);
+        
+        // Формируем внутреннюю структуру с аватаром и пузырем (bubble)
+        let innerHtml = `
+            <div class="chat-avatar" data-username="${escapeHtml(data.sender)}">${escapeHtml(firstLetter)}</div>
+            <div class="message-bubble d-flex justify-content-between align-items-start gap-2">
+                <div>
+                    <small class="text-primary d-block fw-bold mb-1">${escapeHtml(displayName)}</small>
+                    <span class="message-content">${data.content}</span>
+        `;
+        
+        if (data.edited) innerHtml += ` <small class="text-muted">(ред.)</small>`;
+        
+        // Вырезаем только ЧЧ:ММ из таймстампа бэкенда (например, "15:45 14.06.2026" -> "15:45")
+        let timeOnly = data.timestamp.split(' ')[0];
+        innerHtml += `<small class="text-muted d-block text-end mt-1" style="font-size: 0.75rem;">${timeOnly}</small></div>`;
+        
+        let hasFile = "false";
+        let fileType = "";
+
         if (data.attachment_url) {
-            let attHtml = '';
+            hasFile = "true";
+            fileType = data.attachment_type;
+            let pth = escapeHtml(data.attachment_url);
+            let attHtml = '<div>';
             if (data.attachment_type === 'image') {
-                attHtml = `<div><a href="${escapeHtml(data.attachment_url)}" target="_blank"><img src="${escapeHtml(data.attachment_url)}" style="max-width: 200px;"></a></div>`;
+                attHtml += `<a href="${pth}" target="_blank"><img src="${pth}" style="max-width: 100%; max-height: 200px; border-radius: 8px;" class="chat-img-file"></a>`;
             } else if (data.attachment_type === 'video') {
-                attHtml = `<div><video controls src="${escapeHtml(data.attachment_url)}" style="max-width: 300px;"></video></div>`;
+                attHtml += `<video controls src="${pth}" style="max-width: 100%; max-height: 200px; border-radius: 8px;"></video>`;
             } else {
-                attHtml = `<div><a href="${escapeHtml(data.attachment_url)}" target="_blank">📎 Скачать файл</a></div>`;
+                attHtml += `<a href="${pth}" target="_blank">📎 Скачать файл</a>`;
             }
-            contentHtml += attHtml;
+            attHtml += '</div>';
+            innerHtml += attHtml;
         }
-        contentHtml += `</div>`;
-        div.innerHTML = contentHtml;
+        
+        innerHtml += `</div>`; // закрываем message-bubble
+        div.innerHTML = innerHtml;
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dropdown';
+        
+        let cleanText = data.content.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '').replace(/<[^>]*>/g, '').trim();
+
+        let menuItems = `<li><a class="dropdown-item reply-msg-btn" href="#" data-msg-id="${data.id}" data-sender="${escapeHtml(displayName)}" data-content="${escapeHtml(cleanText)}" data-has-file="${hasFile}" data-file-type="${fileType}">Ответить</a></li>`;
+        
         if (isMine) {
-            const dropdown = document.createElement('div');
-            dropdown.className = 'dropdown';
-            dropdown.innerHTML = `
-                <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">⋮</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
-                    <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="${data.id}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
-                </ul>
+            menuItems += `
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
+                <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
             `;
-            div.appendChild(dropdown);
         }
+        
+        dropdown.innerHTML = `
+            <button class="btn btn-sm btn-link p-0 text-secondary" data-bs-toggle="dropdown">⋮</button>
+            <ul class="dropdown-menu dropdown-menu-end">${menuItems}</ul>
+        `;
+        
+        // Вставляем выпадающее меню внутрь пузыря сообщения
+        div.querySelector('.message-bubble').appendChild(dropdown);
         messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        // Привязываем обработчики к новым кнопкам
+        
+        const img = div.querySelector('.chat-img-file');
+        if (img) {
+            img.onload = scrollChatToBottom;
+        }
+        
+        // Подкрашиваем новый созданный аватар
+        div.querySelector('.chat-avatar').style.backgroundColor = stringToColor(data.sender);
+        
+        scrollChatToBottom();
         attachModalHandlers();
     }
 
@@ -272,40 +480,77 @@
             btn.removeEventListener('click', editHandler);
             btn.addEventListener('click', editHandler);
         });
+        
         document.querySelectorAll('.delete-msg-btn').forEach(btn => {
             btn.removeEventListener('click', deleteHandler);
             btn.addEventListener('click', deleteHandler);
+        });
+
+        document.querySelectorAll('.reply-msg-btn').forEach(btn => {
+            btn.removeEventListener('click', replyHandler);
+            btn.addEventListener('click', replyHandler);
         });
     }
 
     function editHandler(e) {
         const msgId = this.dataset.msgId;
-        const content = this.dataset.content;
-        document.getElementById('editContent').value = content;
+        document.getElementById('editContent').value = this.dataset.content;
         document.getElementById('editForm').action = `/chat/edit_message/${msgId}/`;
     }
+    
     function deleteHandler(e) {
-        const msgId = this.dataset.msgId;
-        document.getElementById('deleteForm').action = `/chat/delete_message/${msgId}/`;
+        document.getElementById('deleteForm').action = `/chat/delete_message/${this.dataset.msgId}/`;
     }
+
+    function replyHandler(e) {
+        e.preventDefault();
+        const targetId = this.dataset.msgId;
+        const sender = this.dataset.sender;
+        let content = this.dataset.content;
+        
+        if (!content && this.dataset.hasFile === "true") {
+            if (this.dataset.fileType === 'image') content = "📷 Фотография";
+            else if (this.dataset.fileType === 'video') content = "🎥 Видеозапись";
+            else content = "📁 Файл";
+        }
+        
+        replyData = { id: targetId, sender: sender, content: content };
+        
+        document.getElementById('reply-user').innerText = sender;
+        document.getElementById('reply-text').innerText = content;
+        document.getElementById('reply-preview-container').classList.remove('d-none');
+        document.getElementById('chat-message-input').focus();
+    }
+
+    document.getElementById('cancel-reply-btn').onclick = function() {
+        replyData = null;
+        document.getElementById('reply-preview-container').classList.add('d-none');
+    };
 
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
-        // Определяем, принадлежит ли сообщение текущему пользователю
         const isMine = (data.sender === "{{ user.username }}");
         renderMessage(data, isMine);
     };
 
     function sendTextMessage() {
         const input = document.getElementById('chat-message-input');
-        const message = input.value.trim();
+        let message = input.value.trim();
         if (message) {
+            if (replyData) {
+                const quote = `<blockquote class="reply-quote" onclick="scrollToMessage(${replyData.id})"><strong>${escapeHtml(replyData.sender)}</strong>: ${escapeHtml(replyData.content)}</blockquote>`;
+                message = `${quote}${message}`;
+            }
             chatSocket.send(JSON.stringify({type: 'message', message: message}));
+            
             input.value = '';
+            replyData = null;
+            document.getElementById('reply-preview-container').classList.add('d-none');
         }
     }
 
     document.getElementById('chat-message-submit').onclick = sendTextMessage;
+    
     document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -313,45 +558,49 @@
         }
     });
 
-    // Загрузка файлов
     document.getElementById('attach-file-btn').onclick = () => {
         document.getElementById('chat-file-input').click();
     };
+
     document.getElementById('chat-file-input').onchange = function(e) {
         if (this.files.length) {
-            const file = this.files[0];
             const formData = new FormData();
-            formData.append('attachment', file);
+            formData.append('attachment', this.files[0]);
             fetch(`/chat/upload/${roomId}/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken },
                 body: formData
             }).then(response => response.json())
               .then(data => {
-                  if (data.status !== 'ok') console.error('Upload error');
+                  if (data.status !== 'ok') console.error('Ошибка загрузки');
               }).catch(err => console.error(err));
             this.value = '';
         }
     };
 
-   // Изменяем action формы сразу при выборе пользователя в селекте
     document.querySelector('#removeForm select[name="user_id"]')?.addEventListener('change', function() {
         const userId = this.value;
         const form = document.getElementById('removeForm');
-        if (userId) {
-            // Подставляем ID пользователя прямо в урл формы
-            form.action = `/chat/remove/${roomId}/${userId}/`;
-        } else {
-            form.action = "";
-        }
+        form.action = userId ? `/chat/remove/${roomId}/${userId}/` : "";
     });
 
-    // На всякий случай проверка при отправке
     document.getElementById('removeForm')?.addEventListener('submit', function(e) {
         if (!this.action || this.action.endsWith('/') && !this.action.includes('/remove/')) {
             e.preventDefault();
             alert('Пожалуйста, выберите участника для исключения');
         }
+    });
+
+    function scrollChatToBottom() {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Первоначальный запуск функций
+    colorizeAvatars();
+    scrollChatToBottom();
+    
+    window.addEventListener('load', () => {
+        setTimeout(scrollChatToBottom, 300);
     });
 
     attachModalHandlers();
