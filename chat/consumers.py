@@ -58,12 +58,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return self.message_to_dict(msg)
 
     def message_to_dict(self, msg):
+        attachment_url = None
+        if msg.attachment:
+            # Если url не начинается с /media/, принудительно добавляем его
+            attachment_url = msg.attachment.url if msg.attachment.url.startswith('http') or msg.attachment.url.startswith('/') else f'/media/{msg.attachment.name}'
+            
         return {
             'id': msg.id,
             'sender': msg.sender.username,
             'content': msg.content,
             'timestamp': msg.timestamp.strftime('%H:%M %d.%m.%Y'),
             'edited': msg.edited,
-            'attachment_url': msg.attachment.url if msg.attachment else None,
+            'attachment_url': attachment_url,
             'attachment_type': msg.attachment_type,
         }
