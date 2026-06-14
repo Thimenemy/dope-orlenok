@@ -7,92 +7,174 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body { display: flex; flex-direction: column; min-height: 100vh; }
-        main { flex: 1; }
-        footer { background-color: #f8f9fa; padding: 1rem 0; margin-top: auto; }
-        .navbar-nav { gap: 0.5rem; }
-        .profile-icon { font-size: 1.5rem; cursor: pointer; }
-        .dropdown-menu { min-width: 160px; }
-        /* Для бокового меню */
-        .sidebar {
-            background-color: #f8f9fa;
-            box-shadow: inset -1px 0 0 rgba(0,0,0,.1);
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; /* Запечатываем экран по высоте */
+            overflow: hidden; /* Глобальный скролл отключен */
+            background-color: #f8fafc; /* Тот самый чистый пастельно-серый фон, как у преподавателя */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-        .sidebar .nav-link {
+        
+        /* КРУПНАЯ ФИКСИРОВАННАЯ ШАПКА (В ТОЧНОСТИ КАК У ПРЕПОДАВАТЕЛЯ) */
+        .navbar-custom {
+            height: 70px;
+            background-color: #0f172a !important; /* Глубокий темный графит / ночной синий */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 1030;
+        }
+        .navbar-brand span {
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* НАДСТРОЙКА С ВЕРХНИМИ ВКЛАДКАМИ НАВИГАЦИИ */
+        .nav-tabs-wrapper {
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 1.5rem;
+            z-index: 1020;
+            flex-shrink: 0;
+        }
+        .parent-tabs {
+            border-bottom: none;
+        }
+        .parent-tabs .nav-link {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            padding: 1rem 1.25rem;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .parent-tabs .nav-link i {
+            font-size: 1.05rem;
+        }
+        .parent-tabs .nav-link:hover {
+            color: #0f172a;
+            border-bottom-color: #cbd5e1;
+        }
+        .parent-tabs .nav-link.active {
+            color: #0d6efd !important; /* Насыщенный фирменный синий цвет Бутстрапа */
+            background: transparent !important;
+            border-bottom-color: #0d6efd !important; /* Синяя полоса подчеркивания */
+        }
+
+        /* ОСНОВНОЙ КОНТЕНТНЫЙ БЛОК (СВОЙ ВНУТРЕННИЙ СКРОЛЛ) */
+        .main-content-layout {
+            flex: 1;
+            overflow-y: auto; 
+            padding: 2rem 1.5rem;
+        }
+
+        /* ОФИЦИАЛЬНЫЙ ТЕМНЫЙ ФУТЕР ВНИЗУ */
+        .footer-custom {
+            background-color: #0f172a; /* В цвет верхней шапки */
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 0;
+            text-align: center;
+            flex-shrink: 0;
+            z-index: 1030;
+        }
+        .footer-custom p {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        /* Выпадающее меню профиля */
+        .profile-dropdown-btn {
+            color: rgba(255,255,255,0.85) !important;
             font-weight: 500;
-            color: #333;
         }
-        .sidebar .nav-link:hover {
-            color: #007bff;
-        }
-        .sidebar-heading {
-            font-size: .75rem;
-            text-transform: uppercase;
+        .profile-dropdown-btn:hover {
+            color: #fff !important;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+
+    <!-- 1. Верхняя шапка в стиле кабинета наставника -->
     <header>
-        <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="{% url 'home:dashboard' %}">
-                    <i class="fas fa-graduation-cap"></i> Образовательный центр
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home:dashboard' %}">
+                    <i class="fas fa-graduation-cap text-primary"></i> 
+                    <span class="fw-bold">Образовательная Платформа</span>
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#authNavbar">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="authNavbar">
-                    <ul class="navbar-nav mx-auto">
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'home:dashboard' %}">
-                                <i class="fas fa-home"></i> Дом
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'chat:chat_list' %}">Чаты</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'home:parent_schedule' %}">Расписания</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'home:parent_journal' %}">Журнал</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'course_list' %}active{% endif %}" href="{% url 'main:course_list' %}">
-                                Курсы
-                            </a>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav">
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle profile-icon" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle"></i> <span class="small text-muted">Привет, {{ user.first_name|default:user.username }}</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{% url 'accounts:edit_profile' %}">Мой профиль</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form action="{% url 'accounts:logout' %}" method="post" style="display: inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item">Выйти</button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
+                
+                <!-- Профиль родителя -->
+                <div class="d-flex align-items-center ms-auto">
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle profile-dropdown-btn d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle fs-4 text-primary"></i>
+                            <span>Привет, {{ user.first_name|default:user.username }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="profileDropdown">
+                            <li><a class="dropdown-item py-2" href="{% url 'accounts:edit_profile' %}"><i class="fas fa-user-cog text-muted me-2"></i> Мой профиль</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{% url 'accounts:logout' %}" method="post" class="m-0">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item py-2 text-danger"><i class="fas fa-sign-out-alt me-2"></i> Выйти</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </nav>
     </header>
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+    <!-- 2. Горизонтальная панель вкладок (теперь с фирменным синим фокусом) -->
+    <div class="nav-tabs-wrapper">
+        <div class="container-fluid">
+            <ul class="nav parent-tabs" id="parentNavbarTabs">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'home:dashboard' %}">
+                        <i class="fas fa-home"></i> Дом
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'chat_list' or request.resolver_match.url_name == 'chat_detail' %}active{% endif %}" href="{% url 'chat:chat_list' %}">
+                        <i class="fas fa-comments"></i> Чаты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'parent_schedule' %}active{% endif %}" href="{% url 'home:parent_schedule' %}">
+                        <i class="fas fa-calendar-alt"></i> Расписания
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'parent_journal' %}active{% endif %}" href="{% url 'home:parent_journal' %}">
+                        <i class="fas fa-book-open"></i> Журнал
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'course_list' %}active{% endif %}" href="{% url 'main:course_list' %}">
+                        <i class="fas fa-graduation-cap"></i> Курсы
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
 
-    <footer>
+    <!-- 3. Рабочая скролл-зона для страниц контента -->
+    <main class="main-content-layout">
+        <div class="container-fluid">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <!-- 4. Фиксированный нижний футер -->
+    <footer class="footer-custom">
         <div class="container text-center">
-            <p class="mb-0">&copy; 2025 Образовательный центр. Все права защищены.</p>
+            <p class="mb-0">&copy; {% now "Y" %} Образовательный центр. Кабинет пользователя.</p>
         </div>
     </footer>
 

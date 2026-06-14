@@ -2,254 +2,289 @@
 
 {% block title %}Личный кабинет{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Пастельные статусы */
+    .status-badge-under_review { background-color: #e0f2fe; color: #0369a1; }
+    .status-badge-submitted { background-color: #fef3c7; color: #d97706; }
+    .status-badge-awaiting_payment { background-color: #e0e7ff; color: #4f46e5; }
+    .status-badge-payment_review { background-color: #f1f5f9; color: #475569; }
+    .status-badge-paid { background-color: #d1fae5; color: #065f46; }
+    
+    /* Фиксированный левый мини-сайдбар для детей */
+    .sticky-child-sidebar {
+        position: sticky;
+        top: 0;
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
+    }
+    
+    .child-list-card {
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+    }
+    .child-list-card:hover {
+        border-color: #34d399;
+        background-color: #f8fafc;
+    }
+
+    /* СТИЛИЗАЦИЯ ЗАЯВОК ПОД ЛИНИИ-УВЕДОМЛЕНИЯ */
+    .enrollment-notification-line {
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 20px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .enrollment-notification-line:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        border-color: #cbd5e1;
+    }
+    
+    /* Иконка стрелочки вращается при раскрытии */
+    .chevron-icon {
+        transition: transform 0.2s ease;
+        color: #94a3b8;
+    }
+    .enrollment-notification-line[aria-expanded="true"] .chevron-icon {
+        transform: rotate(180deg);
+        color: #059669;
+    }
+
+    /* Внутренний блок подробной информации */
+    .details-expanded-body {
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        margin-top: -14px;
+        margin-bottom: 15px;
+        padding: 20px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .info-sub-block {
+        background-color: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Боковое меню -->
-        <div class="col-md-3 col-lg-2 d-md-block sidebar">
-            <div class="position-sticky pt-3">
-                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                    <span>Дети</span>
-                    <a class="link-secondary" href="{% url 'accounts:add_child' %}" title="Добавить ребёнка">
-                        <i class="fas fa-plus-circle"></i>
+<div class="row g-4">
+    
+    <div class="col-lg-4 col-xl-3">
+        <div class="sticky-child-sidebar">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-dark m-0">
+                        <i class="fas fa-child text-emerald me-1.5" style="color: #059669;"></i>Мои дети
+                    </h6>
+                    <a href="{% url 'accounts:add_child' %}" class="text-success small fw-bold text-decoration-none" title="Добавить ребёнка">
+                        <i class="fas fa-plus-circle fs-5"></i>
                     </a>
-                </h6>
-                <ul class="nav flex-column mb-3">
+                </div>
+                
+                <div class="d-flex flex-column gap-2">
                     {% if children %}
                         {% for child in children %}
-                        <li class="nav-item d-flex justify-content-between align-items-center">
-                            <span class="nav-link">
-                                {{ child.last_name }} {{ child.first_name }}<br>
-                                <small class="text-muted">{{ child.birth_date|date:"d.m.Y" }}</small>
-                            </span>
+                        <div class="child-list-card d-flex justify-content-between align-items-center">
+                            <div style="min-width: 0;">
+                                <div class="fw-bold text-dark text-truncate" style="font-size: 0.875rem;">{{ child.last_name }} {{ child.first_name }}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;"><i class="far fa-calendar-alt me-1"></i>{{ child.birth_date|date:"d.m.Y" }}</small>
+                            </div>
                             <form method="post" action="{% url 'accounts:delete_child' child.id %}" 
-                                  onsubmit="return confirm('Удалить ребёнка? Все связанные заявки останутся, но ребёнок будет удалён из списка.')">
+                                  onsubmit="return confirm('Удалить ребёнка? Все связанные заявки останутся, но ребёнок будет удалён из списка.')" class="m-0 ms-2">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-link text-danger">
+                                <button type="submit" class="btn btn-sm text-danger p-1 bg-transparent border-0 opacity-50 hover-opacity-100">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </form>
-                        </li>
+                        </div>
                         {% endfor %}
                     {% else %}
-                        <li class="nav-item">
-                            <span class="nav-link text-muted">Нет добавленных детей</span>
-                        </li>
+                        <p class="text-muted small italic m-0 text-center py-3 bg-light rounded-3 border border-dashed">
+                            Детей пока нет
+                        </p>
                     {% endif %}
-                </ul>
-                <hr>
-                
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- Центральная область -->
-        <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Мои заявки</h1>
+    <div class="col-lg-8 col-xl-9">
+        <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+            <h4 class="fw-bold text-dark m-0">Уведомления по заявкам</h4>
+        </div>
+
+        {% if not profile_filled %}
+            <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-center justify-content-between p-3 mb-3 small">
+                <div>
+                    <i class="fas fa-user-edit me-2 text-warning"></i> 
+                    <strong>Профиль не заполнен!</strong> Заполните ФИО, телефон и согласия для отправки заявок.
+                </div>
+                <a href="{% url 'accounts:edit_profile' %}" class="btn btn-sm btn-primary px-3 rounded-pill fw-semibold">Заполнить</a>
+            </div>
+        {% else %}
+            {% if not children %}
+                <div class="alert alert-info border-0 shadow-sm rounded-3 d-flex align-items-center justify-content-between p-3 mb-3 small">
+                    <div>
+                        <i class="fas fa-info-circle me-2 text-info"></i>
+                        Добавьте информацию о ребёнке на панели слева, чтобы начать запись на курсы.
+                    </div>
+                </div> 
+            {% endif %}
+        {% endif %}
+
+        {% if enrollments %}
+            {% for enrollment in enrollments %}
+            
+            <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                 data-bs-toggle="collapse" 
+                 data-bs-target="#details-{{ enrollment.id }}" 
+                 aria-expanded="false">
+                
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #059669;">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div>
+                        <span class="fw-bold text-dark d-block" style="font-size: 0.95rem;">{{ enrollment.course.name }}</span>
+                        <small class="text-muted" style="font-size: 0.8rem;">Заявка #{{ enrollment.id }} от {{ enrollment.created_at|date:"d.m.Y" }}</small>
+                    </div>
+                </div>
+
+                <div class="ms-md-auto me-2">
+                    <span class="badge status-badge-{{ enrollment.status }} px-3 py-1.5 rounded-pill fw-bold small">
+                        {{ enrollment.get_status_display }}
+                    </span>
+                </div>
+
+                <div>
+                    <i class="fas fa-chevron-down chevron-icon mx-2"></i>
+                </div>
             </div>
 
-            <!-- Проверка заполненности профиля -->
-            {% if not profile_filled %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-user-edit"></i> 
-                    Для записи на курсы необходимо заполнить ваш профиль: ФИО, дата рождения, пол, телефон и согласия.
-                    <a href="{% url 'accounts:edit_profile' %}" class="btn btn-sm btn-primary ms-3">Заполнить профиль</a>
-                </div>
-            {% else %}
-                <!-- Если профиль заполнен и есть дети, показываем кнопку записи на курс -->
-                {% if not children %}
-                    <div class="alert alert-info">
-                        У вас пока нет добавленных детей. Добавьте ребёнка, чтобы записаться на курс.
-                        <a href="{% url 'accounts:add_child' %}" class="btn btn-sm btn-primary ms-3">Добавить ребенка</a>
-                    </div> 
-                {% endif %}
-            {% endif %}
-
-            <!-- Список заявок -->
-            {% if enrollments %}
-                {% for enrollment in enrollments %}
-               <div class="card mb-4 border-0 shadow-sm">
-                    <!-- Заголовок: название курса, ID заявки, дата создания и статус -->
-                    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-                        <div>
-                            <strong class="fs-5">{{ enrollment.course.name }}</strong>
-                            <span class="text-muted ms-2 fs-6">
-                                Заявка #{{ enrollment.id }} от {{ enrollment.created_at|date:"d.m.Y" }}
-                            </span>
+            <div class="collapse" id="details-{{ enrollment.id }}">
+                <div class="details-expanded-body rounded-bottom-3 mb-3">
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 info-sub-block h-100">
+                                <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
+                                    <i class="fas fa-child me-1.5" style="color: #059669;"></i> Данные ребенка
+                                </div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ enrollment.child_last_name }} {{ enrollment.child_first_name }}</div>
+                                <small class="text-muted">Дата рождения: {{ enrollment.child_birth_date|date:"j E Y" }}</small>
+                            </div>
                         </div>
-                        <span class="badge {% if enrollment.status == 'under_review' %}bg-info{% elif enrollment.status == 'submitted' %}bg-warning text-dark{% elif enrollment.status == 'awaiting_payment' %}bg-primary{% elif enrollment.status == 'payment_review' %}bg-secondary{% elif enrollment.status == 'paid' %}bg-success{% else %}bg-secondary{% endif %} px-3 py-2">
-                            {{ enrollment.get_status_display }}
-                        </span>
+                        <div class="col-md-6">
+                            <div class="p-3 info-sub-block h-100">
+                                <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
+                                    <i class="fas fa-user-shield me-1.5" style="color: #059669;"></i> Заявитель (Родитель)
+                                </div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }}</div>
+                                <small class="text-muted d-block"><i class="fas fa-phone-alt me-1"></i> {{ enrollment.user.profile.phone|default:"—" }}</small>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="card-body p-4">
-                        <!-- Блоки: Ребёнок и Родитель (с фоном) -->
-                        <div class="row g-4 mb-4">
-                            <div class="col-md-6">
-                                <div class="border rounded p-3 bg-light h-100">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="fas fa-child text-primary me-2"></i>
-                                        <strong class="fs-6">Ребёнок</strong>
-                                    </div>
-                                    <div class="ms-3">
-                                        <div>{{ enrollment.child_last_name }} {{ enrollment.child_first_name }} {{ enrollment.child_middle_name }}</div>
-                                        <small class="text-muted">Дата рождения: {{ enrollment.child_birth_date|date:"j E Y" }}</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="border rounded p-3 bg-light h-100">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="fas fa-users text-primary me-2"></i>
-                                        <strong class="fs-6">Родитель</strong>
-                                    </div>
-                                    <div class="ms-3">
-                                        <div>{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }} {{ enrollment.parent_middle_name }}</div>
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-phone-alt me-1"></i> {{ enrollment.user.profile.phone|default:"—" }}
-                                        </small>
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-envelope me-1"></i> {{ enrollment.user.email }}
-                                        </small>
+                    {% if enrollment.additional_info %}
+                    <div class="p-2.5 info-sub-block mb-3 small text-dark px-3">
+                        <strong>Примечание:</strong> {{ enrollment.additional_info }}
+                    </div>
+                    {% endif %}
+
+                    {% with docs=enrollment.documents.all %}
+                        {% if docs %}
+                        <div class="mb-3">
+                            <div class="text-secondary small fw-bold text-uppercase tracking-wider mb-1.5" style="font-size: 0.725rem;">Прикрепленные файлы:</div>
+                            <div class="row g-2">
+                                {% for doc in docs %}
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="border rounded-3 p-2 px-3 d-flex justify-content-between align-items-center bg-white shadow-sm" style="font-size: 0.8rem;">
+                                        <span class="text-truncate text-dark fw-medium" style="max-width: 130px;">
+                                            <i class="fas {% if 'pdf' in doc.file.name %}fa-file-pdf text-danger{% else %}fa-file-image text-primary{% endif %} me-1.5"></i>
+                                            {{ doc.get_document_type_display }}
+                                        </span>
+                                        <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle text-primary p-1"><i class="fas fa-external-link-alt"></i></a>
                                     </div>
                                 </div>
+                                {% endfor %}
                             </div>
                         </div>
-
-                        <!-- Дополнительная информация (из поля additional_info) -->
-                        <div class="border rounded p-3 bg-light mb-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-info-circle text-primary me-2"></i>
-                                <strong class="fs-6">Дополнительная информация</strong>
-                            </div>
-                            <div class="ms-3">
-                                {{ enrollment.additional_info|default:"—" }}
-                            </div>
-                        </div>
-
-                     
-
-                        <!-- Загруженные документы (если есть) -->
-                        {% with docs=enrollment.documents.all %}
-                            {% if docs %}
-                            <div class="mt-3">
-                                <strong class="fs-6"><i class="fas fa-paperclip"></i> Загруженные документы:</strong>
-                                <div class="row g-2 mt-1">
-                                    {% for doc in docs %}
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="border rounded p-2 d-flex justify-content-between align-items-center">
-                                            <span class="small text-truncate" style="max-width: 150px;">
-                                                <i class="fas {% if 'pdf' in doc.file.name %}fa-file-pdf text-danger{% else %}fa-file-image text-primary{% endif %}"></i>
-                                                {{ doc.get_document_type_display }}
-                                            </span>
-                                            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        {% endwith %}
-
-                   
-
-
-                        
-                    
-                
-                        {% if enrollment.status == 'under_review' %}
-                        <div class="alert alert-info mt-3">
-                            <strong>Заявка на проверке</strong><br>
-                            Документы загружены и согласие дано. Мы свяжемся с вами после проверки.
-                        </div>
-
-                        {% elif enrollment.status == 'submitted' %}
-                        <div class="alert alert-warning mt-3">
-                            <i class="fas fa-hourglass-half fa-1x me-2"></i><strong>Заявка в статусе ожидания.</strong><br>
-                            Вы можете удалить её или вернуть на доработку в течение 30 минут с момента отправки.<br>
-                            <span class="text-muted">
-                                Время отправки: {{ enrollment.submitted_at|date:"d.m.Y H:i" }}<br>
-                                По истечении времени любые действия с заявкой возможны только через поддержку.
-                            </span>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <form method="post" action="{% url 'enrollment:delete_enrollment' enrollment.id %}" 
-                                  onsubmit="return confirm('Удалить заявку? Это действие необратимо.');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-trash-alt"></i> Удалить
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'enrollment:rework_enrollment' enrollment.id %}" 
-                                  onsubmit="return confirm('Все загруженные документы будут удалены. Продолжить?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-warning">
-                                    <i class="fas fa-undo-alt"></i> Вернуть на доработку
-                                </button>
-                            </form>
-                        </div>
-
-                        {% elif enrollment.status == 'awaiting_payment' %}
-                        <div class="alert alert-success mt-3">
-                            <strong>Заявка одобрена! Теперь необходимо оплатить.</strong>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-header bg-primary text-white">
-                                Реквизиты для оплаты
-                            </div>
-                            <div class="card-body">
-                                <pre class="bg-light p-3 rounded">{{ enrollment.payment_details|linebreaks }}</pre>
-                                <p><strong>Сумма к оплате:</strong> {{ enrollment.price }} руб.</p>
-                            </div>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-header bg-info text-white">
-                                Загрузить чек об оплате
-                            </div>
-                            <div class="card-body">
-                                <form method="post" action="{% url 'enrollment:upload_receipt' enrollment.id %}" enctype="multipart/form-data">
-                                    {% csrf_token %}
-                                    <div class="mb-3">
-                                        <label class="form-label">Файл чека (изображение или PDF)</label>
-                                        <input type="file" name="receipt" class="form-control" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Отправить чек</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div class="alert alert-secondary">
-                            <i class="fas fa-mobile-alt"></i> <strong>Оплатить онлайн</strong><br>
-                            Кнопка оплаты через СБП/карту будет доступна позже. Пока вы можете оплатить по реквизитам и загрузить чек.
-                        </div>
-
-                        {% elif enrollment.status == 'payment_review' %}
-                        <div class="alert alert-warning mt-3">
-                            <strong>Чек загружен, ожидает проверки бухгалтером.</strong>
-                        </div>    
                         {% endif %}
+                    {% endwith %}
+
+                    {% if enrollment.status == 'under_review' %}
+                    <div class="alert alert-info border-0 m-0 p-2.5 rounded-3 small">
+                        <i class="fas fa-info-circle me-1"></i>Заявка находится на верификации у модераторов центра. Скрининг документов.
                     </div>
-                </div>
-                {% endfor %}
-                <div class="text-center py-5">
-                    
-                    <a href="{% url 'main:course_list' %}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-plus-circle"></i> Добавить курс
-                    </a>
-                </div>
-            {% else %}
-                <div class="text-center py-5">
-                    
-                    {% if profile_filled and children %}
-                    <p class="lead">У вас пока нет заявок на курсы.</p>
-                        <a href="{% url 'main:course_list' %}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-book-open"></i> Записаться на курс
-                        </a>
+
+                    {% elif enrollment.status == 'submitted' %}
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light p-2.5 rounded-3 border small">
+                        <span class="text-muted"><i class="fas fa-history me-1"></i>Ожидание обработки (Фиксация: {{ enrollment.submitted_at|date:"H:i d.m" }})</span>
+                        <div class="d-flex gap-2">
+                            <form method="post" action="{% url 'enrollment:delete_enrollment' enrollment.id %}" onsubmit="return confirm('Удалить заявку?');" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Удалить</button>
+                            </form>
+                            <form method="post" action="{% url 'enrollment:rework_enrollment' enrollment.id %}" onsubmit="return confirm('Отозвать заявку?');" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-xs btn-outline-warning py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Отозвать</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% elif enrollment.status == 'awaiting_payment' %}
+                    <div class="p-3 border rounded-3 bg-white shadow-sm">
+                        <div class="alert alert-success border-0 py-1.5 px-3 small rounded-3 mb-2.5">Заявка одобрена! Требуется оплата.</div>
+                        <pre class="bg-light p-2 rounded text-dark small mb-2" style="font-family: inherit; white-space: pre-wrap; font-size: 0.8rem;">{{ enrollment.payment_details }}</pre>
+                        <div class="fw-bold text-dark small mb-3">Сумма к оплате: <span class="text-success fs-5">{{ enrollment.price }}</span> руб.</div>
+                        
+                        <form method="post" action="{% url 'enrollment:upload_receipt' enrollment.id %}" enctype="multipart/form-data" class="m-0 border-top pt-2">
+                            {% csrf_token %}
+                            <label class="form-label small text-muted fw-bold">Прикрепить чек / квитанцию</label>
+                            <div class="d-flex gap-2">
+                                <input type="file" name="receipt" class="form-control form-control-sm" required style="border-radius: 8px;">
+                                <button type="submit" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold flex-shrink-0">Отправить чек</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% elif enrollment.status == 'payment_review' %}
+                    <div class="alert alert-secondary border-0 m-0 p-2.5 rounded-3 small text-dark d-flex align-items-center gap-2">
+                        <i class="fas fa-spinner fa-spin text-secondary"></i>
+                        <span>Чек загружен и проверяется бухгалтерией банка. Ожидайте смены статуса.</span>
+                    </div>    
                     {% endif %}
+
                 </div>
-            {% endif %}
-        </div>
+            </div>
+            {% endfor %}
+            
+            <div class="text-center py-3">
+                <a href="{% url 'main:course_list' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-semibold">
+                    <i class="fas fa-plus-circle me-1"></i> Записаться на новый курс
+                </a>
+            </div>
+        {% else %}
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed mt-2">
+                <i class="far fa-folder-open text-muted fa-3x mb-3"></i>
+                <h5 class="text-secondary fw-bold">Активных заявок пока нет</h5>
+                {% if profile_filled and children %}
+                    <a href="{% url 'main:course_list' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-semibold mt-2">
+                        <i class="fas fa-book-open me-1"></i> Выбрать курс в каталоге
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

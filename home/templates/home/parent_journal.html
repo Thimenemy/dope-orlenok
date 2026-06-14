@@ -1,69 +1,201 @@
 {% extends "home/base_auth.html" %}
+
 {% block title %}Успеваемость детей{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Карточка фильтра */
+    .filter-journal-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+    }
+
+    /* Современные селекторы-переключатели детей вместо стандартного select */
+    .child-select-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 20px;
+        border-radius: 20px;
+        border: 2px solid #e2e8f0;
+        background-color: #fff;
+        color: #475569;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+    .child-select-pill:hover {
+        border-color: #34d399;
+        color: #064e3b;
+        background-color: #f0fdf4;
+    }
+    .child-select-pill.active {
+        background-color: #059669;
+        border-color: #059669;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Дизайн EdTech-таблицы оценок */
+    .journal-table-container {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background-color: #fff;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+    }
+    .journal-table-container table {
+        margin-bottom: 0 !important;
+    }
+    .journal-table-container thead th {
+        background-color: #f8fafc;
+        color: #334155;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 14px;
+        text-align: center;
+    }
+    .journal-table-container thead th:first-child,
+    .journal-table-container tbody td:first-child {
+        text-align: left;
+    }
+    .journal-table-container tbody td {
+        padding: 14px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #475569;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    /* Красивые мягкие бейджи посещаемости */
+    .attendance-badge-present {
+        background-color: #d1fae5;
+        color: #065f46;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+    .attendance-badge-absent {
+        background-color: #fee2e2;
+        color: #991b1b;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+
+    /* Подсветка отличных оценок */
+    .grade-cell-highlight {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-    <h2 class="mb-4">Журнал успеваемости</h2>
+<div class="container-fluid p-0" style="max-width: 1150px;">
+    
+    <div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark m-0">Электронный журнал</h1>
+            <p class="text-muted small mb-0">Контролируйте посещаемость, текущие оценки и примечания наставников онлайн</p>
+        </div>
+    </div>
 
     {% if children %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <form method="get" class="row g-3 align-items-end">
-                    <div class="col-auto">
-                        <label for="childSelect" class="form-label">Выберите ребенка</label>
-                        <select name="child_id" id="childSelect" class="form-select" onchange="this.form.submit()">
-                            <option value="">-- Выберите --</option>
-                            {% for child in children %}
-                                <option value="{{ child.id }}" {% if selected_child.id == child.id %}selected{% endif %}>
-                                    {{ child.last_name }} {{ child.first_name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+        <div class="card filter-journal-card p-4 mb-4">
+            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider mb-3">Выберите профиль ребёнка</label>
+            <div class="d-flex flex-wrap align-items-center">
+                <form method="get" id="childSelectForm" class="d-none">
+                    <input type="hidden" name="child_id" id="hiddenChildInput" value="{{ selected_child.id|default:'' }}">
                 </form>
+
+                {% for child in children %}
+                    <button type="button" 
+                            class="child-select-pill {% if selected_child.id == child.id %}active{% endif %}" 
+                            onclick="submitJournalChild({{ child.id }})">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>{{ child.last_name }} {{ child.first_name }}</span>
+                    </button>
+                {% endfor %}
             </div>
         </div>
 
         {% if selected_child %}
-            <h4 class="mb-3">{{ selected_child.last_name }} {{ selected_child.first_name }}</h4>
+            <div class="d-flex align-items-center gap-2 mb-3 mt-4">
+                <div class="rounded-circle bg-success d-flex align-items-center justify-content-center text-white" style="width: 32px; height: 32px; background-color: #059669;">
+                    <i class="fas fa-check" style="font-size: 0.85rem;"></i>
+                </div>
+                <h4 class="fw-bold text-dark m-0">Личное досье: {{ selected_child.last_name }} {{ selected_child.first_name }}</h4>
+            </div>
+
             {% if journal_entries %}
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle">
-                        <thead class="table-light">
+                <div class="table-responsive journal-table-container">
+                    <table class="table align-middle">
+                        <thead>
                             <tr>
-                                <th>Дата</th>
-                                <th>Группа</th>
-                                <th>Время занятия</th>
-                                <th>Посещаемость</th>
-                                <th>Оценка</th>
-                                <th>Комментарий</th>
+                                <th style="width: 120px;">Дата урока</th>
+                                <th style="width: 150px;">Учебная группа</th>
+                                <th>Тема пройденного занятия</th>
+                                <th style="width: 160px;">Статус визита</th>
+                                <th style="width: 100px;">Оценка</th>
+                                <th style="width: 250px;" class="text-start">Заметка преподавателя</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for entry in journal_entries %}
                             <tr>
-                                <td>{{ entry.schedule.date|date:"d.m.Y" }}</td>
-                                <td>{{ entry.schedule.group.name }}</td>
-                                <td>{{ entry.schedule.topic|default:"—" }}</td>
+                                <td class="fw-bold text-dark">{{ entry.schedule.date|date:"d.m.Y" }}</td>
+                                <td><span class="badge bg-light text-secondary border px-2.5 py-1.5 rounded-3">{{ entry.schedule.group.name }}</span></td>
+                                <td class="text-start text-wrap small">{{ entry.schedule.topic|default:"—" }}</td>
                                 <td>
                                     {% if entry.attendance %}
-                                        <span class="badge bg-success">Присутствовал</span>
+                                        <span class="attendance-badge-present"><i class="fas fa-check-circle me-1"></i> Присутствовал</span>
                                     {% else %}
-                                        <span class="badge bg-danger">Отсутствовал</span>
+                                        <span class="attendance-badge-absent"><i class="fas fa-times-circle me-1"></i> Отсутствовал</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ entry.grade|default:"—" }}</td>
-                                <td>{{ entry.comment|default:"—" }}</td>
+                                <td class="grade-cell-highlight">{{ entry.grade|default:"—" }}</td>
+                                <td class="text-start text-muted small text-wrap" style="line-height: 1.35;">{{ entry.comment|default:"—" }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <div class="alert alert-info">Нет записей успеваемости для этого ребенка.</div>
+                <div class="alert alert-info border-0 shadow-sm rounded-3 small">
+                    <i class="fas fa-info-circle me-1.5"></i>На данный момент для выбранного ребёнка нет внесённых записей в электронном журнале успеваемости.
+                </div>
             {% endif %}
+        {% else %}
+            <div class="text-center py-4 text-muted small bg-white border rounded-3 shadow-sm">
+                <i class="fas fa-arrow-up d-block fs-4 mb-2 text-secondary opacity-50"></i>
+                Нажмите на карточку с именем вашего ребёнка выше, чтобы сформировать выписку оценок.
+            </div>
         {% endif %}
+        
     {% else %}
-        <div class="alert alert-warning">У вас нет добавленных детей.</div>
+        <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed mt-2">
+            <i class="fas fa-user-slash text-muted fa-3x mb-3"></i>
+            <h5 class="text-secondary fw-bold">Привязанные профили детей отсутствуют</h5>
+            <p class="text-muted small mb-0">Перейдите на главную страницу панели управления, чтобы внести данные о ваших детях.</p>
+        </div>
     {% endif %}
 </div>
+
+<script>
+    // Умный скрипт для мгновенной отправки GET-запроса при клике на кнопки-пилюли
+    function submitJournalChild(childId) {
+        document.getElementById('hiddenChildInput').value = childId;
+        document.getElementById('childSelectForm').submit();
+    }
+</script>
 {% endblock %}

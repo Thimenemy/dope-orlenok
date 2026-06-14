@@ -2,62 +2,237 @@
 
 {% block title %}Программы дополнительного образования{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Заголовок секции */
+    .programs-header {
+        margin-bottom: 3.5rem;
+    }
+    .programs-header h1 {
+        color: #064e3b; /* ВЕРНУЛИ СТРОГИЙ БЛАГОРОДНЫЙ ИЗУМРУД */
+        letter-spacing: -1px;
+    }
+
+    /* Основная карточка курса */
+    .course-main-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        background-color: #fff;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    .course-main-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(6, 78, 59, 0.08); /* Строгая, но глубокая тень */
+        border-color: #34d399; /* Фирменная мятная обводка */
+    }
+
+    /* Бокс для иконки */
+    .course-icon-wrap {
+        width: 70px;
+        height: 70px;
+        background-color: #f0fdf4; 
+        color: #059669; /* Вернули строгий глубокий зеленый */
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 1.75rem;
+        transition: transform 0.3s ease;
+    }
+    .course-main-card:hover .course-icon-wrap {
+        transform: scale(1.1) rotate(-5deg);
+        background-color: #059669;
+        color: #fff;
+    }
+
+    /* Текст внутри */
+    .course-title {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+    .course-desc {
+        color: #475569;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    /* Характеристики курса */
+    .course-features-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px; 
+        margin: 1.5rem 0;
+        padding-top: 1.5rem;
+        border-top: 1px solid #f1f5f9;
+    }
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem; 
+        color: #334155;
+        font-weight: 500;
+    }
+    .feature-item i {
+        color: #059669;
+        font-size: 1.05rem;
+    }
+    .feature-price {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    /* Кнопка записи */
+    .btn-enroll {
+        background-color: #059669; 
+        border-color: #059669;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 10px 24px;
+        transition: all 0.2s;
+    }
+    .btn-enroll:hover {
+        background-color: #047857;
+        border-color: #047857;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Пагинация */
+    .pagination .page-link {
+        color: #059669;
+        border-radius: 8px;
+        margin: 0 3px;
+        border: 1px solid #e2e8f0;
+        font-weight: 600;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: #059669 !important;
+        border-color: #059669 !important;
+        color: #ffffff !important; 
+    }
+    .pagination .page-link:hover {
+        background-color: #f0fdf4;
+        color: #047857;
+    }
+
+    /* Нижний алерт */
+    .info-alert-custom {
+        background-color: #f0fdf4; 
+        border: 1px solid #d1fae5;
+        color: #065f46;
+        border-radius: 14px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-12 text-center mb-5">
-        <h1 class="display-5 fw-bold">Программы дополнительного образования</h1>
-        <p class="lead">Выберите направление, которое подходит вашему ребенку</p>
-    </div>
+<div class="programs-header text-center">
+    <h1 class="display-5 fw-bold">Программы обучения</h1>
+    <p class="text-muted lead mx-auto" style="max-width: 600px;">Выберите направление будущего развития вашего ребенка. Мы гарантируем современные методики и результат.</p>
 </div>
 
+<!-- Выравнивание по центру для 1, 2 или 3 карточек -->
 <div class="row g-4 justify-content-center">
     {% for course in courses %}
-    <div class="col-md-4">
-        <div class="card course-card h-100">
-            <div class="card-body text-center d-flex flex-column h-100">
-                <i class="fas {{ course.icon }} fa-3x text-primary mb-3"></i>
-                <h5 class="card-title">{{ course.name }}</h5>
-                <p class="card-text flex-grow-1 mt-2">{{ course.description|truncatewords:20 }}</p>
-                <ul class="list-unstyled text-start mt-3">
-                    <li><i class="fas fa-check-circle text-success"></i> Возраст: {{ course.age_min }}–{{ course.age_max }} лет</li>
-                    <li><i class="fas fa-check-circle text-success"></i> Длительность: {{ course.duration }}</li>
-                    <li><i class="fas fa-check-circle text-success"></i> Формат: {{ course.format }}</li>
-                    <li><i class="fas fa-ruble-sign text-success"></i> Стоимость: {{ course.price }} руб.</li>
-                </ul>
-            </div>
-            <div class="card-footer bg-transparent border-0 pb-3 text-center">
-                <a href="{% if user.is_authenticated %}{% url 'enrollment:enroll' course.id %}{% else %}{% url 'accounts:login' %}{% endif %}" class="btn btn-primary">Записаться</a>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 course-main-card shadow-sm">
+            <div class="card-body p-4 text-center d-flex flex-column">
+                
+                <!-- АВТОПОДБОР ИКОНОК НА ОСНОВЕ НАЗВАНИЯ КУРСА -->
+                <div class="course-icon-wrap">
+                    {% if course.icon %}
+                        <i class="fas {{ course.icon }}"></i>
+                    {% else %}
+                        {% if "робот" in course.name.lower or "лего" in course.name.lower or "lego" in course.name.lower %}
+                            <i class="fas fa-robot"></i>
+                        {% elif "Программ" in course.name.lower or "код" in course.name.lower or "python" in course.name.lower or "it" in course.name.lower %}
+                            <i class="fas fa-laptop-code"></i>
+                        {% elif "Английск" in course.name.lower or "english" in course.name.lower or "язык" in course.name.lower %}
+                            <i class="fas fa-language"></i>
+                        <!-- Проверяем шахматы -->
+                        {% elif "шахмат" in course.name.lower or "chess" in course.name.lower %}
+                            <i class="fas fa-chess-knight"></i>
+                        {% elif "рисовани" in course.name.lower or "арт" in course.name.lower or "худ" in course.name.lower or "изо" in course.name.lower %}
+                            <i class="fas fa-paint-brush"></i>
+                        {% elif "математ" in course.name.lower or "логик" in course.name.lower or "счет" in course.name.lower %}
+                            <i class="fas fa-calculator"></i>
+                        {% elif "подготов" in course.name.lower or "школ" in course.name.lower %}
+                            <i class="fas fa-pencil-alt"></i>
+                        {% elif "музык" in course.name.lower or "вокал" in course.name.lower or "пение" in course.name.lower %}
+                            <i class="fas fa-music"></i>
+                        {% elif "танц" in course.name.lower or "хорео" in course.name.lower or "спорт" in course.name.lower %}
+                            <i class="fas fa-running"></i>
+                        {% else %}
+                            <i class="fas fa-graduation-cap"></i> <!-- Дефолтная красивая академическая шапочка -->
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <h5 class="course-title">{{ course.name }}</h5>
+                <p class="course-desc flex-grow-1">
+                    {{ course.description|truncatewords:18 }}
+                </p>
+
+                <div class="course-features-grid text-start">
+                    <div class="feature-item" title="Возраст">
+                        <i class="fas fa-users"></i>
+                        <span>{{ course.age_min }}–{{ course.age_max }} лет</span>
+                    </div>
+                    <div class="feature-item" title="Длительность">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ course.duration }} дней</span>
+                    </div>
+                    <div class="feature-item" title="Формат">
+                        <i class="fas fa-laptop-house"></i>
+                        <span>{{ course.format }}</span>
+                    </div>
+                    <div class="feature-item feature-price" title="Стоимость">
+                        <i class="fas fa-tag"></i>
+                        <span>{{ course.price }} руб.</span>
+                    </div>
+                </div>
+
+                <div class="mt-auto">
+                    <a href="{% if user.is_authenticated %}{% url 'enrollment:enroll' course.id %}{% else %}{% url 'accounts:login' %}{% endif %}" 
+                       class="btn btn-enroll w-100 py-2.5">
+                        <i class="fas fa-pen-nib me-2"></i> Записаться на курс
+                    </a>
+                </div>
             </div>
         </div>
     </div>
     {% empty %}
     <div class="col-12">
-        <p class="text-center">Нет доступных курсов</p>
+        <div class="text-center py-5 bg-white rounded-4 border border-dashed">
+            <i class="fas fa-search text-muted fa-3x mb-3"></i>
+            <h5 class="text-secondary">Курсы временно отсутствуют</h5>
+            <p class="text-muted">Зайдите позже, мы как раз готовим новые программы!</p>
+        </div>
     </div>
     {% endfor %}
 </div>
 
-<!-- Пагинация -->
 {% if is_paginated %}
 <div class="row mt-5">
     <div class="col-12">
         <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
+            <ul class="pagination justify-content-center border-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-                        <span aria-hidden="true">&laquo;</span>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                        <i class="fas fa-chevron-left"></i>
                     </a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link" aria-hidden="true">&laquo;</span>
                 </li>
                 {% endif %}
 
                 {% for num in paginator.page_range %}
                     {% if page_obj.number == num %}
-                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    <li class="page-item active"><span class="page-link text-white">{{ num }}</span></li>
                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
                     {% endif %}
@@ -65,13 +240,9 @@
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-                        <span aria-hidden="true">&raquo;</span>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                        <i class="fas fa-chevron-right"></i>
                     </a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link" aria-hidden="true">&raquo;</span>
                 </li>
                 {% endif %}
             </ul>
@@ -82,9 +253,12 @@
 
 <div class="row mt-5">
     <div class="col-12">
-        <div class="alert alert-info" role="alert">
-            <i class="fas fa-info-circle"></i> Для записи на программы потребуется авторизация. 
-            Если у вас еще нет учетной записи, зарегистрируйтесь.
+        <div class="alert info-alert-custom d-flex align-items-center p-3" role="alert">
+            <i class="fas fa-info-circle fs-4 me-3"></i>
+            <div>
+                <strong>Обратите внимание:</strong> Для подачи заявки на обучение вам необходимо войти в систему. 
+                Учетная запись позволяет отслеживать статус заявки и успеваемость.
+            </div>
         </div>
     </div>
 </div>

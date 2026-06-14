@@ -1,48 +1,130 @@
 {% extends "home/base_auth.html" %}
+
 {% block title %}Расписание групп{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Продвинутые EdTech-карточки учебных групп */
+    .schedule-group-card {
+        border: none;
+        border-radius: 16px;
+        background-color: #ffffff;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        border-bottom: 4px solid transparent;
+    }
+    .schedule-group-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(6, 78, 59, 0.06) !important;
+        border-bottom-color: #34d399; /* Фирменная мятная полоска при наведении */
+    }
+
+    /* Иконка-бокс для курса */
+    .course-icon-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background-color: rgba(5, 150, 105, 0.1);
+        color: #059669;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+    }
+
+    /* Блок информации о детях внутри группы */
+    .group-children-badge-box {
+        background-color: #f0fdf4; /* Сверхсветлый мятный фон */
+        border: 1px solid #d1fae5;
+        border-radius: 10px;
+        padding: 10px 14px;
+    }
+
+    /* Контейнер динамического AJAX-расписания (если используется) */
+    .ajax-schedule-collapse {
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        border-radius: 0 0 16px 16px;
+        padding: 15px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-    <h1 class="mb-4">Расписание групп</h1>
+<div class="container-fluid p-0" style="max-width: 1200px;">
+    
+    <div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark m-0">Расписание групп</h1>
+            <p class="text-muted small mb-0">Выбирайте учебную группу вашего ребёнка для просмотра сетки занятий и тем семестра</p>
+        </div>
+    </div>
+
     {% if groups %}
-        <div class="row">
+        <div class="row g-4">
             {% for group in groups %}
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ group.name }}</h5>
-                        <p class="card-text">
-                            <strong>Курс:</strong> {{ group.course.name }}<br>
-                            <strong>Период:</strong> {{ group.start_date|date:"d.m.Y" }} – {{ group.end_date|date:"d.m.Y" }}
-                        </p>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm schedule-group-card">
+                    <div class="card-body p-4 d-flex flex-column h-100">
+                        
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="course-icon-avatar flex-shrink-0">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div style="min-width: 0;">
+                                <h5 class="card-title fw-bold text-dark m-0 text-truncate" title="{{ group.name }}">{{ group.name }}</h5>
+                                <small class="text-muted d-block text-truncate" style="max-width: 220px;">Курс: {{ group.course.name }}</small>
+                            </div>
+                        </div>
+
+                        <div class="bg-light p-2 px-3 rounded-3 mb-3 text-muted small d-flex justify-content-between align-items-center flex-grow-1">
+                            <span><i class="far fa-calendar me-1.5 text-secondary"></i> С {{ group.start_date|date:"d.m.Y" }}</span>
+                            <i class="fas fa-long-arrow-alt-right opacity-50 px-1"></i>
+                            <span>по {{ group.end_date|date:"d.m.Y" }}</span>
+                        </div>
+
                         {% if group.parent_children %}
-                            <div class="mb-2">
-                                <strong>Ваши дети в группе:</strong><br>
-                                {% for member in group.parent_children %}
-                                    {{ member.child.last_name }} {{ member.child.first_name }}
-                                    ({{ member.child.birth_date|date:"d.m.Y" }})
-                                    {% if not forloop.last %}, {% endif %}
-                                {% endfor %}
+                            <div class="group-children-badge-box mb-4">
+                                <div class="small text-secondary fw-bold text-uppercase tracking-wider mb-1" style="font-size: 0.7rem; color: #065f46 !important;">
+                                    <i class="fas fa-child me-1"></i> Ваши дети в группе:
+                                </div>
+                                <div class="text-dark fw-medium" style="font-size: 0.875rem; line-height: 1.4;">
+                                    {% for member in group.parent_children %}
+                                        <span class="d-inline-block">{{ member.child.last_name }} {{ member.child.first_name }}</span>
+                                        <span class="text-muted small">({{ member.child.birth_date|date:"d.m.Y" }})</span>
+                                        {% if not forloop.last %}<span class="text-muted me-1">,</span>{% endif %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         {% endif %}
-                        <a href="{% url 'home:group_schedule_page' group.id %}" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-calendar-alt"></i> Посмотреть расписание
-                        </a>
+
+                        <div class="mt-auto">
+                            <a href="{% url 'home:group_schedule_page' group.id %}" class="btn btn-outline-success btn-sm w-100 py-2 rounded-pill fw-semibold show-schedule-btn" data-group-id="{{ group.id }}">
+                                <i class="far fa-calendar-check me-1.5"></i> Посмотреть расписание
+                            </a>
+                        </div>
                     </div>
-                    <div id="schedule-container-{{ group.id }}" class="card-footer bg-white border-top-0" style="display: none;">
-                        <div class="schedule-content"></div>
+
+                    <div id="schedule-container-{{ group.id }}" class="ajax-schedule-collapse" style="display: none;">
+                        <div class="schedule-content small text-dark"></div>
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="alert alert-info">Вы пока не записаны ни в одну группу.</div>
+        <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed mt-2">
+            <i class="far fa-calendar-times text-muted fa-3x mb-3"></i>
+            <h5 class="text-secondary fw-bold">Доступные расписания отсутствуют</h5>
+            <p class="text-muted small mb-0">Вы пока не зачислены ни в одну учебную группу.</p>
+            <p class="text-muted small">После одобрения модератором вашей заявки, здесь появится интерактивный календарь.</p>
+        </div>
     {% endif %}
 </div>
 
 <script>
 document.querySelectorAll('.show-schedule').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+        // Если кнопка используется как AJAX-разворачиватель, можно отменить стандартный переход по ссылке через e.preventDefault()
         const groupId = this.dataset.groupId;
         const container = document.getElementById(`schedule-container-${groupId}`);
         const contentDiv = container.querySelector('.schedule-content');
