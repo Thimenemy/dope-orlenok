@@ -29,21 +29,38 @@ class CreateChatForm(forms.Form):
         from accounts.models import Child
 
         if user.groups.filter(name='Преподаватель').exists():
-            # Преподаватель: показываем родителей учеников его групп
-            # Находим всех детей, которые учатся в группах этого преподавателя
-            groups = Group.objects.filter(teacher=user)
-            children = Child.objects.filter(groups__in=groups).distinct()
-            # Родители этих детей
+            # Преподаватель: показываем родителей учеников ЕГО групп
+            
+            # 1. Получаем чистый список ID всех детей, зачисленных в группы этого учителя
+            child_ids = GroupMember.objects.filter(
+                group__teacher=user
+            ).values_list('child_id', flat=True).distinct()
+            
+            # 2. Достаем этих детей по их ID
+            children = Child.objects.filter(id__in=child_ids)
+            
+            # 3. Находим родителей этих детей
             participants_qs = User.objects.filter(children__in=children).distinct()
+            
         else:
             # Родитель: показываем преподавателей и других родителей из тех же групп
-            # Группы, в которых участвуют дети этого родителя
             children = user.children.all()
-            group_ids = GroupMember.objects.filter(child__in=children).values_list('group_id', flat=True).distinct()
+            
+            # Находим чистые ID групп, в которых учатся дети этого родителя
+            group_ids = GroupMember.objects.filter(
+                child__in=children
+            ).values_list('group_id', flat=True).distinct()
+            
             # Преподаватели этих групп
             teachers = User.objects.filter(teaching_groups__id__in=group_ids).distinct()
-            # Другие родители (чьи дети учатся в тех же группах)
-            other_parents = User.objects.filter(children__groups__id__in=group_ids).exclude(id=user.id).distinct()
+            
+            # Другие родители (чьи дети учатся в тех же ID групп)
+            other_parents = User.objects.filter(
+                children__id__in=Child.objects.filter(
+                    id__in=GroupMember.objects.filter(group_id__in=group_ids).values_list('child_id', flat=True)
+                )
+            ).exclude(id=user.id).distinct()
+            
             participants_qs = (teachers | other_parents).distinct()
 
         self.fields['participants'].queryset = participants_qs

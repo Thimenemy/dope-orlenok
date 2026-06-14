@@ -4,226 +4,307 @@
 
 {% block extra_css %}
 <style>
-    /* Стили для цитирования ответов */
-    blockquote.reply-quote {
-        background-color: rgba(0, 0, 0, 0.05);
-        border-left: 4px solid #0d6efd;
-        padding: 6px 10px;
-        margin-top: 5px;
-        margin-bottom: 5px;
-        font-size: 0.85rem;
-        border-radius: 0 6px 6px 0;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    blockquote.reply-quote:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-    }
-    /* Эффект подсветки сообщения при переходе по ссылке-ответу */
-    .highlight-message {
-        animation: flash-highlight 1.5s ease-out;
-    }
-    @keyframes flash-highlight {
-        0% { background-color: rgba(13, 110, 253, 0.3); }
-        100% { background-color: transparent; }
+    /* Базовый каркас чата в стиле EdTech */
+    .chat-wrapper {
+        background-color: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        /* Вычисляем высоту, чтобы окно чата занимало ровно всё свободное место без скролла всей страницы */
+        height: calc(100vh - 140px); 
+        overflow: hidden;
     }
 
-    /* --- НОВЫЕ СТИЛИ ДЛЯ РАЗДЕЛЕНИЯ ЧАТА ПРАВО/ЛЕВО И АВАТАРОК --- */
-    
-    /* Сетка сообщения */
+    /* Верхняя панель чата */
+    .chat-header-panel {
+        padding: 1rem 1.5rem;
+        background-color: #fff;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    /* Зона сообщений (свой внутренний скролл) */
+    .chat-messages-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        background-color: #f8fafc; /* Приятный светлый фон для контраста пузырей */
+        scroll-behavior: smooth;
+    }
+
+    /* Нижняя панель ввода */
+    .chat-input-panel {
+        padding: 1rem 1.5rem;
+        background-color: #fff;
+        border-top: 1px solid #f1f5f9;
+        flex-shrink: 0;
+    }
+
+    /* СТИЛИЗАЦИЯ ПУЗЫРЕЙ И СЕТКИ СООБЩЕНИЙ */
     .chat-message-row {
         display: flex;
-        margin-bottom: 12px;
+        margin-bottom: 1rem;
         align-items: flex-end;
-        gap: 8px;
+        gap: 10px;
     }
-    
-    /* Свои сообщения (справа) */
     .message-mine {
         flex-direction: row-reverse;
     }
-    
-    /* Контейнер самого текста и вложений */
     .message-bubble {
-        max-width: 70%;
+        max-width: 65%;
         padding: 10px 14px;
         border-radius: 16px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         position: relative;
     }
-    
-    /* Цвета блоков */
     .message-mine .message-bubble {
-        background-color: #e1f5fe; /* Нежно-голубой для себя */
+        background-color: #e0f2fe; /* Красивый фирменный голубой */
         border-bottom-right-radius: 4px;
+        color: #0369a1;
     }
     .message-other .message-bubble {
-        background-color: #f5f5f5; /* Светло-серый для остальных */
+        background-color: #fff; /* Белоснежный для контраста */
         border-bottom-left-radius: 4px;
+        border: 1px solid #e2e8f0;
+        color: #334155;
     }
 
-    /* Круглый аватар-кружочек */
+    /* Круглый аватар */
     .chat-avatar {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        font-size: 0.95rem;
+        font-weight: 700;
+        font-size: 0.9rem;
         text-transform: uppercase;
         user-select: none;
         flex-shrink: 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+
+    /* Кастомное цитирование (Ответы) */
+    blockquote.reply-quote {
+        background-color: rgba(15, 23, 42, 0.04);
+        border-left: 4px solid #0d6efd;
+        padding: 6px 10px;
+        margin-top: 4px;
+        margin-bottom: 6px;
+        font-size: 0.825rem;
+        border-radius: 0 8px 8px 0;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        color: #475569;
+    }
+    .message-mine blockquote.reply-quote {
+        background-color: rgba(3, 105, 161, 0.06);
+        border-left-color: #0369a1;
+        color: #0369a1;
+    }
+    blockquote.reply-quote:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+    }
+
+    /* Подсветка сообщения при переходе по якорю */
+    .highlight-message {
+        animation: flash-highlight 1.5s ease-out;
+    }
+    @keyframes flash-highlight {
+        0% { background-color: rgba(13, 110, 253, 0.2); transform: scale(1.01); }
+        100% { background-color: transparent; transform: scale(1); }
+    }
+
+    /* Кастомизация поля ввода текста */
+    .chat-textarea {
+        border-radius: 12px !important;
+        border: 1px solid #cbd5e1;
+        resize: none;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+    }
+    .chat-textarea:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+    }
+
+    /* Кнопки управления */
+    .chat-action-btn {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                {% if room.room_type == 'group' %}
-                    <h4 class="mb-0">{{ room.name|default:"Групповой чат" }}</h4>
-                    <small class="text-muted" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#participantsModal">
-                        <i class="fas fa-users"></i> Участников: {{ room.participants.count }}
-                    </small>
-                {% else %}
-                    <h4 class="mb-0">
-                        {% if other_participant.get_full_name %}
-                            {{ other_participant.get_full_name }}
-                        {% else %}
-                            {{ other_participant.username }}
-                        {% endif %}
-                    </h4>
-                {% endif %}
-            </div>
-            <div>
-                {% if room.room_type == 'group' and room.created_by == user or is_teacher %}
-                    <div class="dropdown d-inline-block">
-                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#inviteModal">Пригласить</a></li>
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#removeModal">Исключить</a></li>
-                        </ul>
+<div class="chat-wrapper">
+    
+    <!-- 1. Верхняя панель метаданных чата -->
+    <div class="chat-header-panel">
+        <div>
+            {% if room.room_type == 'group' %}
+                <h5 class="fw-bold text-dark m-0">{{ room.name|default:"Групповой чат" }}</h5>
+                <small class="text-muted" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#participantsModal">
+                    <i class="fas fa-users text-primary me-1"></i> Студентов в группе: <span class="fw-bold text-dark">{{ room.participants.count }}</span>
+                </small>
+            {% else %}
+                <h5 class="fw-bold text-dark m-0">
+                    {% if other_participant.get_full_name %}
+                        {{ other_participant.get_full_name }}
+                    {% else %}
+                        {{ other_participant.username }}
+                    {% endif %}
+                </h5>
+                <small class="text-muted"><i class="fas fa-circle text-success me-1" style="font-size: 0.65rem;"></i> Приватный диалог</small>
+            {% endif %}
+        </div>
+        
+        <div class="d-flex align-items-center gap-2">
+            {% if room.room_type == 'group' and room.created_by == user or is_teacher %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog me-1"></i> Управление
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                        <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#inviteModal"><i class="fas fa-user-plus text-success me-2"></i> Пригласить ученика</a></li>
+                        <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#removeModal"><i class="fas fa-user-minus text-danger me-2"></i> Исключить участника</a></li>
+                    </ul>
+                </div>
+            {% endif %}
+            <a href="{% if back_url %}{{ back_url }}{% else %}{% url 'chat:chat_list' %}{% endif %}" class="btn btn-secondary btn-sm px-3 rounded-pill">
+                <i class="fas fa-arrow-left me-1"></i> Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- 2. Главная скролл-зона вывода сообщений -->
+    <div id="chat-messages" class="chat-messages-body">
+        {% for msg in messages %}
+            <div class="chat-message-row {% if msg.sender == user %}message-mine{% else %}message-other{% endif %}" id="msg-{{ msg.id }}" data-msg-id="{{ msg.id }}">
+                
+                <!-- Аватарка -->
+                <div class="chat-avatar" data-username="{{ msg.sender.username }}">
+                    {% if msg.sender.first_name %}{{ msg.sender.first_name|slice:":1" }}{% else %}{{ msg.sender.username|slice:":1" }}{% endif %}
+                </div>
+
+                <!-- Тело сообщения -->
+                <div class="message-bubble">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div style="min-width: 0;">
+                            <!-- ФИО автора сообщения -->
+                            <small class="d-block fw-bold mb-1" style="font-size: 0.8rem; color: #4f46e5;">
+                                {% if msg.sender.get_full_name %}
+                                    {{ msg.sender.get_full_name }}
+                                {% else %}
+                                    {{ msg.sender.username }}
+                                {% endif %}
+                            </small>
+                            
+                            <!-- Контент -->
+                            <span class="message-content" style="font-size: 0.925rem; word-break: break-word;">{{ msg.content|safe }}</span>
+                            {% if msg.edited %}<small class="text-muted ms-1" style="font-size: 0.75rem;">(ред.)</small>{% endif %}
+                            <small class="text-muted d-block text-end mt-1" style="font-size: 0.7rem;">{{ msg.timestamp|date:"H:i" }}</small>
+                            
+                            <!-- Вложения -->
+                            {% if msg.attachment %}
+                                <div class="mt-2 attachment-container">
+                                    {% if msg.attachment_type == 'image' %}
+                                        <a href="{{ msg.attachment.url }}" target="_blank">
+                                            <img src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 220px; border-radius: 10px;" class="chat-img-file shadow-sm">
+                                        </a>
+                                    {% elif msg.attachment_type == 'video' %}
+                                        <video controls src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 220px; border-radius: 10px;" class="shadow-sm"></video>
+                                    {% else %}
+                                        <a href="{{ msg.attachment.url }}" target="_blank" class="btn btn-light btn-sm text-primary border rounded-3 py-1.5 px-3">
+                                            <i class="fas fa-paperclip me-1"></i> Скачать файл
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Опции сообщения (Управление/Ответ) -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link p-0 text-secondary opacity-50 hover-opacity-100" data-bs-toggle="dropdown">⋮</button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="font-size: 0.85rem;">
+                                <li>
+                                    <a class="dropdown-item reply-msg-btn py-2" href="#" 
+                                       data-msg-id="{{ msg.id }}"
+                                       data-sender="{% if msg.sender.get_full_name %}{{ msg.sender.get_full_name }}{% else %}{{ msg.sender.username }}{% endif %}" 
+                                       data-content="{{ msg.content|striptags }}"
+                                       data-has-file="{% if msg.attachment %}true{% else %}false{% endif %}"
+                                       data-file-type="{{ msg.attachment_type }}">
+                                        <i class="fas fa-reply text-muted me-2"></i> Ответить
+                                    </a>
+                                </li>
+                                {% if msg.sender == user %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item edit-msg-btn py-2" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#editModal"><i class="fas fa-edit text-muted me-2"></i> Редактировать</a></li>
+                                    <li><a class="dropdown-item delete-msg-btn py-2 text-danger" href="#" data-msg-id="{{ msg.id }}" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="fas fa-trash-alt me-2"></i> Удалить</a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
                     </div>
-                {% endif %}
-                <a href="{% if back_url %}{{ back_url }}{% else %}{% url 'chat:chat_list' %}{% endif %}" class="btn btn-secondary btn-sm ms-2">
-                    <i class="fas fa-arrow-left"></i> Назад
-                </a>
+                </div>
+
             </div>
+        {% endfor %}
+    </div>
+
+    <!-- 3. Панель ввода и плашка реплая -->
+    <div class="chat-input-panel">
+        <!-- Блок превью ответа на сообщение -->
+        <div id="reply-preview-container" class="alert alert-light border py-2 px-3 mb-3 d-none d-flex justify-content-between align-items-center rounded-3 shadow-sm">
+            <div style="min-width: 0;">
+                <div class="small text-dark fw-bold"><i class="fas fa-reply text-primary me-2"></i>Ответ пользователю <span id="reply-user"></span></div>
+                <div id="reply-text" class="text-muted small text-truncate" style="max-width: 600px;"></div>
+            </div>
+            <button type="button" class="btn-close btn-sm" id="cancel-reply-btn"></button>
         </div>
 
-        <div class="card-body">
-            <!-- Окно сообщений чата -->
-            <div id="chat-messages" style="height: 480px; overflow-y: scroll; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; scroll-behavior: smooth; background-color: #fafafa;">
-                {% for msg in messages %}
-                    <!-- Строка сообщения с классами позиционирования право/лево -->
-                    <div class="chat-message-row {% if msg.sender == user %}message-mine{% else %}message-other{% endif %}" id="msg-{{ msg.id }}" data-msg-id="{{ msg.id }}">
-                        
-                        <!-- Круглый аватар (генерируется цвет динамически по username) -->
-                        <div class="chat-avatar" data-username="{{ msg.sender.username }}">
-                            {% if msg.sender.first_name %}{{ msg.sender.first_name|slice:":1" }}{% else %}{{ msg.sender.username|slice:":1" }}{% endif %}
-                        </div>
-
-                        <!-- Пузырь сообщения -->
-                        <div class="message-bubble d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <small class="text-primary d-block fw-bold mb-1">
-                                    {% if msg.sender.get_full_name %}
-                                        {{ msg.sender.get_full_name }}
-                                    {% else %}
-                                        {{ msg.sender.username }}
-                                    {% endif %}
-                                </small>
-                                
-                                <span class="message-content">{{ msg.content|safe }}</span>
-                                {% if msg.edited %}<small class="text-muted">(ред.)</small>{% endif %}
-                                <small class="text-muted d-block text-end mt-1" style="font-size: 0.75rem;">{{ msg.timestamp|date:"H:i" }}</small>
-                                
-                                {% if msg.attachment %}
-                                    <div class="mt-1 attachment-container">
-                                        {% if msg.attachment_type == 'image' %}
-                                            <a href="{{ msg.attachment.url }}" target="_blank">
-                                                <img src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 200px; border-radius: 8px;" class="chat-img-file">
-                                            </a>
-                                        {% elif msg.attachment_type == 'video' %}
-                                            <video controls src="{{ msg.attachment.url }}" style="max-width: 100%; max-height: 200px; border-radius: 8px;"></video>
-                                        {% else %}
-                                            <a href="{{ msg.attachment.url }}" target="_blank">📎 Скачать файл</a>
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Управление сообщением (троеточие) -->
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-link p-0 text-secondary" data-bs-toggle="dropdown">⋮</button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item reply-msg-btn" href="#" 
-                                           data-msg-id="{{ msg.id }}"
-                                           data-sender="{% if msg.sender.get_full_name %}{{ msg.sender.get_full_name }}{% else %}{{ msg.sender.username }}{% endif %}" 
-                                           data-content="{{ msg.content|striptags }}"
-                                           data-has-file="{% if msg.attachment %}true{% else %}false{% endif %}"
-                                           data-file-type="{{ msg.attachment_type }}">
-                                            Ответить
-                                        </a>
-                                    </li>
-                                    {% if msg.sender == user %}
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
-                                        <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="{{ msg.id }}" data-content="{{ msg.content }}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
-                                    {% endif %}
-                                </ul>
-                            </div>
-                        </div>
-
-                    </div>
-                {% endfor %}
-            </div>
-
-            <!-- Блок превью ответа на сообщение -->
-            <div id="reply-preview-container" class="alert alert-secondary py-1 px-3 mb-2 d-none d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-reply text-primary me-2"></i>
-                    <small>Ответ пользователю <strong id="reply-user"></strong>:</small>
-                    <div id="reply-text" class="text-muted small text-truncate" style="max-width: 500px;"></div>
-                </div>
-                <button type="button" class="btn-close btn-sm" id="cancel-reply-btn" style="font-size: 0.75rem;"></button>
-            </div>
-
-            <!-- Форма ввода сообщения -->
-            <div class="input-group">
-                <textarea id="chat-message-input" class="form-control" rows="2" placeholder="Введите сообщение..."></textarea>
-                <input type="file" id="chat-file-input" style="display: none;">
-                <button class="btn btn-outline-secondary" type="button" id="attach-file-btn">📎</button>
-                <button class="btn btn-primary" type="button" id="chat-message-submit">Отправить</button>
-            </div>
+        <!-- Поле ввода и кнопки действий -->
+        <div class="d-flex align-items-end gap-2">
+            <input type="file" id="chat-file-input" style="display: none;">
+            <button class="btn btn-light chat-action-btn border" type="button" id="attach-file-btn" title="Прикрепить файл">
+                <i class="fas fa-paperclip text-secondary fs-5"></i>
+            </button>
+            
+            <textarea id="chat-message-input" class="form-control chat-textarea" rows="1" placeholder="Напишите сообщение..."></textarea>
+            
+            <button class="btn btn-primary chat-action-btn shadow-sm" type="button" id="chat-message-submit" title="Отправить">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Модальные окна (без изменений) -->
+<!-- Блок всех Модальных Окон (без изменений логики Джанго) -->
 {% if room.room_type == 'group' %}
 <div class="modal fade" id="participantsModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Участники чата</h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-users text-primary me-2"></i>Список участников</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <ul class="list-group">
+            <div class="modal-body p-0">
+                <ul class="list-group list-group-flush">
                     {% for p in room.participants.all %}
-                        <li class="list-group-item">
-                            {% if p.get_full_name %}{{ p.get_full_name }}{% else %}{{ p.username }}{% endif %}
-                            {% if p == room.created_by %}<span class="badge bg-primary ms-2">Создатель</span>{% endif %}
+                        <li class="list-group-item px-4 py-2.5 d-flex justify-content-between align-items-center">
+                            <span class="fw-medium text-dark">{% if p.get_full_name %}{{ p.get_full_name }}{% else %}{{ p.username }}{% endif %}</span>
+                            {% if p == room.created_by %}<span class="badge bg-primary-subtle text-primary rounded-pill px-2.5">Создатель</span>{% endif %}
                         </li>
                     {% endfor %}
                 </ul>
@@ -234,25 +315,25 @@
 {% endif %}
 
 <div class="modal fade" id="inviteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post" action="{% url 'chat:invite_to_group' room.id %}">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Пригласить участника</h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-user-plus text-success me-2"></i>Пригласить студента</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <select name="user_id" class="form-select" required>
-                        <option value="">-- Выберите пользователя --</option>
+                <div class="modal-body px-4 py-3">
+                    <select name="user_id" class="form-select form-select-sm shadow-sm" required>
+                        <option value="">-- Выберите из списка центра --</option>
                         {% for p in available_users %}
                             <option value="{{ p.id }}">{{ p.get_full_name|default:p.username }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Пригласить</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4 btn-sm rounded-pill shadow-sm">Пригласить</button>
                 </div>
             </form>
         </div>
@@ -260,17 +341,17 @@
 </div>
 
 <div class="modal fade" id="removeModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post" action="" id="removeForm">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Исключить участника</h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-user-minus text-danger me-2"></i>Исключить участника</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <select name="user_id" class="form-select" required>
-                        <option value="">-- Выберите участника --</option>
+                <div class="modal-body px-4 py-3">
+                    <select name="user_id" class="form-select form-select-sm shadow-sm" required>
+                        <option value="">-- Выберите участника группы --</option>
                         {% for participant in room.participants.all %}
                             {% if participant != room.created_by %}
                                 <option value="{{ participant.id }}">{{ participant.get_full_name|default:participant.username }}</option>
@@ -278,9 +359,9 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-danger">Исключить</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger px-4 btn-sm rounded-pill shadow-sm">Исключить</button>
                 </div>
             </form>
         </div>
@@ -288,20 +369,20 @@
 </div>
 
 <div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post" action="" id="editForm">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Редактировать сообщение</h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-edit text-primary me-2"></i>Редактирование</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body px-4">
                     <textarea name="content" id="editContent" class="form-control" rows="3" required></textarea>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4 btn-sm rounded-pill shadow-sm">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -309,26 +390,27 @@
 </div>
 
 <div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post" action="" id="deleteForm">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Удалить сообщение</h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="fas fa-trash-alt me-2"></i>Удалить сообщение?</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <p>Вы уверены, что хотите удалить это сообщение?</p>
+                <div class="modal-body px-4">
+                    <p class="m-0 text-muted">Вы действительно хотите безвозвратно удалить выбранное сообщение из истории комнаты?</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-danger">Удалить</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger px-4 btn-sm rounded-pill shadow-sm">Удалить</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<!-- ПОЛНОСТЬЮ АВТОНОМНЫЙ JAVASCRIPT-БЛОК СЕТИ -->
 <script>
     const roomId = {{ room.id }};
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
@@ -338,17 +420,14 @@
     const csrfToken = '{{ csrf_token }}';
     
     const currentUserName = "{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}";
-    
     let replyData = null;
 
-    // Палитра красивых цветов для аватарок
     const colors = [
         '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', 
         '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', 
         '#a1887f', '#90a4ae', '#e0a800', '#ff8a65'
     ];
 
-    // Умная функция генерации цвета на основе хэша строки (username)
     function stringToColor(str) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
@@ -358,13 +437,10 @@
         return colors[index];
     }
 
-    // Красим все аватарки на странице
     function colorizeAvatars() {
         document.querySelectorAll('.chat-avatar').forEach(avatar => {
             const username = avatar.getAttribute('data-username');
-            if (username) {
-                avatar.style.backgroundColor = stringToColor(username);
-            }
+            if (username) avatar.style.backgroundColor = stringToColor(username);
         });
     }
 
@@ -383,9 +459,7 @@
         if (targetElement) {
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             targetElement.classList.add('highlight-message');
-            setTimeout(() => {
-                targetElement.classList.remove('highlight-message');
-            }, 1500);
+            setTimeout(() => { targetElement.classList.remove('highlight-message'); }, 1500);
         } else {
             alert("Сообщение не найдено в текущей истории");
         }
@@ -393,29 +467,26 @@
 
     function renderMessage(data, isMine) {
         const div = document.createElement('div');
-        // Задаем правильные стили сетки и позиционирования право/лево
         div.className = `chat-message-row ${isMine ? 'message-mine' : 'message-other'}`;
         div.setAttribute('data-msg-id', data.id);
         div.setAttribute('id', `msg-${data.id}`);
         
         let displayName = data.sender_full_name ? data.sender_full_name : data.sender;
-        // Первая буква имени для аватара
         let firstLetter = displayName.charAt(0);
         
-        // Формируем внутреннюю структуру с аватаром и пузырем (bubble)
         let innerHtml = `
             <div class="chat-avatar" data-username="${escapeHtml(data.sender)}">${escapeHtml(firstLetter)}</div>
-            <div class="message-bubble d-flex justify-content-between align-items-start gap-2">
-                <div>
-                    <small class="text-primary d-block fw-bold mb-1">${escapeHtml(displayName)}</small>
-                    <span class="message-content">${data.content}</span>
+            <div class="message-bubble">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div style="min-width: 0;">
+                        <small class="d-block fw-bold mb-1" style="font-size: 0.8rem; color: #4f46e5;">${escapeHtml(displayName)}</small>
+                        <span class="message-content" style="font-size: 0.925rem; word-break: break-word;">${data.content}</span>
         `;
         
-        if (data.edited) innerHtml += ` <small class="text-muted">(ред.)</small>`;
+        if (data.edited) innerHtml += ` <small class="text-muted" style="font-size: 0.75rem;">(ред.)</small>`;
         
-        // Вырезаем только ЧЧ:ММ из таймстампа бэкенда (например, "15:45 14.06.2026" -> "15:45")
         let timeOnly = data.timestamp.split(' ')[0];
-        innerHtml += `<small class="text-muted d-block text-end mt-1" style="font-size: 0.75rem;">${timeOnly}</small></div>`;
+        innerHtml += `<small class="text-muted d-block text-end mt-1" style="font-size: 0.7rem;">${timeOnly}</small></div>`;
         
         let hasFile = "false";
         let fileType = "";
@@ -424,19 +495,19 @@
             hasFile = "true";
             fileType = data.attachment_type;
             let pth = escapeHtml(data.attachment_url);
-            let attHtml = '<div>';
+            let attHtml = '<div class="mt-2">';
             if (data.attachment_type === 'image') {
-                attHtml += `<a href="${pth}" target="_blank"><img src="${pth}" style="max-width: 100%; max-height: 200px; border-radius: 8px;" class="chat-img-file"></a>`;
+                attHtml += `<a href="${pth}" target="_blank"><img src="${pth}" style="max-width: 100%; max-height: 220px; border-radius: 10px;" class="chat-img-file shadow-sm"></a>`;
             } else if (data.attachment_type === 'video') {
-                attHtml += `<video controls src="${pth}" style="max-width: 100%; max-height: 200px; border-radius: 8px;"></video>`;
+                attHtml += `<video controls src="${pth}" style="max-width: 100%; max-height: 220px; border-radius: 10px;" class="shadow-sm"></video>`;
             } else {
-                attHtml += `<a href="${pth}" target="_blank">📎 Скачать файл</a>`;
+                attHtml += `<a href="${pth}" target="_blank" class="btn btn-light btn-sm text-primary border rounded-3 py-1.5 px-3"><i class="fas fa-paperclip me-1"></i> Скачать файл</a>`;
             }
             attHtml += '</div>';
             innerHtml += attHtml;
         }
         
-        innerHtml += `</div>`; // закрываем message-bubble
+        innerHtml += `</div>`;
         div.innerHTML = innerHtml;
 
         const dropdown = document.createElement('div');
@@ -444,31 +515,27 @@
         
         let cleanText = data.content.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '').replace(/<[^>]*>/g, '').trim();
 
-        let menuItems = `<li><a class="dropdown-item reply-msg-btn" href="#" data-msg-id="${data.id}" data-sender="${escapeHtml(displayName)}" data-content="${escapeHtml(cleanText)}" data-has-file="${hasFile}" data-file-type="${fileType}">Ответить</a></li>`;
+        let menuItems = `<li><a class="dropdown-item reply-msg-btn py-2" href="#" data-msg-id="${data.id}" data-sender="${escapeHtml(displayName)}" data-content="${escapeHtml(cleanText)}" data-has-file="${hasFile}" data-file-type="${fileType}"><i class="fas fa-reply text-muted me-2"></i> Ответить</a></li>`;
         
         if (isMine) {
             menuItems += `
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item edit-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#editModal">Редактировать</a></li>
-                <li><a class="dropdown-item delete-msg-btn" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#deleteModal">Удалить</a></li>
+                <li><a class="dropdown-item edit-msg-btn py-2" href="#" data-msg-id="${data.id}" data-content="${escapeHtml(data.content)}" data-bs-toggle="modal" data-bs-target="#editModal"><i class="fas fa-edit text-muted me-2"></i> Редактировать</a></li>
+                <li><a class="dropdown-item delete-msg-btn py-2 text-danger" href="#" data-msg-id="${data.id}" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="fas fa-trash-alt me-2"></i> Удалить</a></li>
             `;
         }
         
         dropdown.innerHTML = `
-            <button class="btn btn-sm btn-link p-0 text-secondary" data-bs-toggle="dropdown">⋮</button>
-            <ul class="dropdown-menu dropdown-menu-end">${menuItems}</ul>
+            <button class="btn btn-sm btn-link p-0 text-secondary opacity-50" data-bs-toggle="dropdown">⋮</button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="font-size: 0.85rem;">${menuItems}</ul>
         `;
         
-        // Вставляем выпадающее меню внутрь пузыря сообщения
         div.querySelector('.message-bubble').appendChild(dropdown);
         messagesDiv.appendChild(div);
         
         const img = div.querySelector('.chat-img-file');
-        if (img) {
-            img.onload = scrollChatToBottom;
-        }
+        if (img) img.onload = scrollChatToBottom;
         
-        // Подкрашиваем новый созданный аватар
         div.querySelector('.chat-avatar').style.backgroundColor = stringToColor(data.sender);
         
         scrollChatToBottom();
@@ -480,12 +547,10 @@
             btn.removeEventListener('click', editHandler);
             btn.addEventListener('click', editHandler);
         });
-        
         document.querySelectorAll('.delete-msg-btn').forEach(btn => {
             btn.removeEventListener('click', deleteHandler);
             btn.addEventListener('click', deleteHandler);
         });
-
         document.querySelectorAll('.reply-msg-btn').forEach(btn => {
             btn.removeEventListener('click', replyHandler);
             btn.addEventListener('click', replyHandler);
@@ -493,9 +558,8 @@
     }
 
     function editHandler(e) {
-        const msgId = this.dataset.msgId;
         document.getElementById('editContent').value = this.dataset.content;
-        document.getElementById('editForm').action = `/chat/edit_message/${msgId}/`;
+        document.getElementById('editForm').action = `/chat/edit_message/${this.dataset.msgId}/`;
     }
     
     function deleteHandler(e) {
@@ -515,7 +579,6 @@
         }
         
         replyData = { id: targetId, sender: sender, content: content };
-        
         document.getElementById('reply-user').innerText = sender;
         document.getElementById('reply-text').innerText = content;
         document.getElementById('reply-preview-container').classList.remove('d-none');
@@ -542,7 +605,6 @@
                 message = `${quote}${message}`;
             }
             chatSocket.send(JSON.stringify({type: 'message', message: message}));
-            
             input.value = '';
             replyData = null;
             document.getElementById('reply-preview-container').classList.add('d-none');
@@ -550,7 +612,6 @@
     }
 
     document.getElementById('chat-message-submit').onclick = sendTextMessage;
-    
     document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -558,9 +619,7 @@
         }
     });
 
-    document.getElementById('attach-file-btn').onclick = () => {
-        document.getElementById('chat-file-input').click();
-    };
+    document.getElementById('attach-file-btn').onclick = () => { document.getElementById('chat-file-input').click(); };
 
     document.getElementById('chat-file-input').onchange = function(e) {
         if (this.files.length) {
@@ -570,39 +629,22 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken },
                 body: formData
-            }).then(response => response.json())
-              .then(data => {
-                  if (data.status !== 'ok') console.error('Ошибка загрузки');
-              }).catch(err => console.error(err));
+            }).then(response => response.json()).catch(err => console.error(err));
             this.value = '';
         }
     };
 
     document.querySelector('#removeForm select[name="user_id"]')?.addEventListener('change', function() {
-        const userId = this.value;
-        const form = document.getElementById('removeForm');
-        form.action = userId ? `/chat/remove/${roomId}/${userId}/` : "";
-    });
-
-    document.getElementById('removeForm')?.addEventListener('submit', function(e) {
-        if (!this.action || this.action.endsWith('/') && !this.action.includes('/remove/')) {
-            e.preventDefault();
-            alert('Пожалуйста, выберите участника для исключения');
-        }
+        this.parentElement.parentElement.action = this.value ? `/chat/remove/${roomId}/${this.value}/` : "";
     });
 
     function scrollChatToBottom() {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Первоначальный запуск функций
     colorizeAvatars();
     scrollChatToBottom();
-    
-    window.addEventListener('load', () => {
-        setTimeout(scrollChatToBottom, 300);
-    });
-
+    window.addEventListener('load', () => { setTimeout(scrollChatToBottom, 300); });
     attachModalHandlers();
 </script>
 {% endblock %}

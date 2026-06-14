@@ -2,45 +2,148 @@
 
 {% block title %}Мои группы{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Продвинутые стили для карточек курсов */
+    .group-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        background-color: #fff;
+    }
+    .group-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+    }
+    .icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #f1f5f9;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Мои группы</h1>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
-        <i class="fas fa-plus"></i> Создать группу
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-4 border-bottom">
+    <div>
+        <h1 class="h2 fw-bold text-dark m-0">Мои учебные группы</h1>
+        <p class="text-muted small mb-0">Управление расписанием, успеваемостью и групповыми чатами</p>
+    </div>
+    <button type="button" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+        <i class="fas fa-plus-circle me-1"></i> Создать группу
     </button>
 </div>
 
 <div class="row g-4">
     {% for group in groups %}
     <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title">{{ group.name }}</h5>
-                <p class="card-text">
-                    <strong>Курс:</strong> {{ group.course.name }}<br>
-                    <strong>Даты:</strong> {{ group.start_date|date:"d.m.Y" }} – {{ group.end_date|date:"d.m.Y" }}<br>
-                    <strong>Учеников:</strong> {{ group.members.count }} / {{ group.max_students }}
+        <div class="card h-100 shadow-sm group-card">
+            <div class="card-body p-4 d-flex flex-column h-100">
+                
+                <!-- Верхняя часть карточки с названием и иконкой -->
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="icon-box">
+                        <i class="fas fa-book-reader fs-4"></i>
+                    </div>
+                    <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1 rounded-pill small">
+                        ID: {{ group.id }}
+                    </span>
+                </div>
+
+                <!-- Название группы и курса -->
+                <h5 class="card-title fw-bold text-dark mb-1">{{ group.name }}</h5>
+                <p class="text-muted small mb-3 flex-grow-1">
+                    <i class="fas fa-graduation-cap me-1"></i> {{ group.course.name }}
                 </p>
-                <a href="{% url 'teacher:group_detail' group.pk %}" class="btn btn-outline-primary btn-sm">Подробнее</a>
+
+                <!-- Даты проведения курса -->
+                <div class="bg-light p-2.5 rounded-3 mb-3 text-muted small d-flex justify-content-between align-items-center">
+                    <span><i class="far fa-calendar-alt me-1"></i> {{ group.start_date|date:"d.m.Y" }}</span>
+                    <i class="fas fa-long-arrow-alt-right text-muted px-1"></i>
+                    <span><i class="far fa-calendar-check me-1"></i> {{ group.end_date|date:"d.m.Y" }}</span>
+                </div>
+
+                <!-- Заполненность группы учениками -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between text-muted small mb-1">
+                        <span>Заполненность класса</span>
+                        <strong class="text-dark">{{ group.members.count }} / {{ group.max_students }}</strong>
+                    </div>
+                    <!-- Прогресс-бар меняет цвет, если забит на 100% -->
+                    <div class="progress">
+                        <div class="progress-bar {% if group.members.count >= group.max_students %}bg-danger{% else %}bg-success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {% widthratio group.members.count group.max_students 100 %}%">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопка действия -->
+                <div class="mt-auto">
+                    <a href="{% url 'teacher:group_detail' group.pk %}" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                        Управление группой <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
     {% empty %}
-    <div class="col-12"><p class="text-muted">Групп пока нет. Создайте первую группу.</p></div>
+    <div class="col-12">
+        <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed">
+            <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
+            <h5 class="text-secondary fw-bold">У вас пока нет активных групп</h5>
+            <p class="text-muted small mb-4">Нажмите кнопку сверху, чтобы создать вашу первую учебную группу</p>
+        </div>
+    </div>
     {% endfor %}
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="createGroupModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+<!-- Модальное окно создания группы (с улучшенными стилями форм) -->
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post">
                 {% csrf_token %}
-                <div class="modal-header"><h5 class="modal-title">Новая группа</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">{{ form.as_p }}</div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Создать</button></div>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold text-dark"><i class="fas fa-plus-circle text-primary me-2"></i>Новая учебная группа</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <!-- Бутстрап обертка для полей формы -->
+                    <div class="teacher-form-fields">
+                        {{ form.as_p }}
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 rounded-pill btn-sm" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill btn-sm shadow-sm">Создать группу</button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Скрипт красиво внедряет бутстрап-классы в поля формы джанго
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.teacher-form-fields p input, .teacher-form-fields p select').forEach(element => {
+            element.classList.add('form-control');
+            element.classList.add('form-control-sm');
+            if(element.tagName === 'SELECT') {
+                element.classList.remove('form-control');
+                element.classList.add('form-select');
+            }
+        });
+    });
+</script>
 {% endblock %}

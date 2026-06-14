@@ -1,85 +1,186 @@
 {% extends "teacher/base_teacher.html" %}
 
-{% block title %}{{ group.name }}{% endblock %}
+{% block title %}Группа: {{ group.name }}{% endblock %}
+
 {% load teacher_extras %}
+
+{% block extra_css %}
+<style>
+    /* Кастомизация вкладок (Tabs) */
+    .custom-tabs .nav-link {
+        color: #64748b;
+        font-weight: 600;
+        border: none;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .custom-tabs .nav-link:hover {
+        color: #1e293b;
+        border-bottom-color: #cbd5e1;
+    }
+    .custom-tabs .nav-link.active {
+        color: #0d6efd !important;
+        background: transparent !important;
+        border-bottom-color: #0d6efd !important;
+    }
+    .custom-tabs i {
+        margin-right: 6px;
+    }
+
+    /* Современный стиль таблиц */
+    .table-responsive {
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        background-color: #fff;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        color: #334155;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 12px;
+    }
+    .table tbody td, .table tbody th {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #475569;
+    }
+
+    /* Стили для ячеек интерактивного расписания */
+    .schedule-cell {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 110px;
+        font-size: 0.85rem;
+    }
+    .schedule-cell:hover {
+        background-color: #f1f5f9 !important;
+    }
+    .cell-filled {
+        background-color: #ecfdf5 !important; /* Мягкий зеленый */
+        color: #065f46 !important;
+        font-weight: 500;
+    }
+
+    /* Компоненты журнала */
+    .journal-grade-input {
+        max-width: 70px;
+        text-align: center;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+    }
+    .journal-grade-input:focus {
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+    .comment-trigger {
+        transition: color 0.2s;
+    }
+    .comment-trigger:hover {
+        color: #0d6efd !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">{{ group.name }}</h1>
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
     <div>
-        
+        <h1 class="h2 fw-bold text-dark m-0">{{ group.name }}</h1>
+        <p class="text-muted small mb-0">Курс: <span class="fw-medium text-secondary">{{ group.course.name }}</span></p>
     </div>
+    <a href="{% url 'teacher:group_list' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
+        <i class="fas fa-arrow-left me-1"></i> К спискам групп
+    </a>
 </div>
 
-<!-- Вкладки -->
-<ul class="nav nav-tabs mb-4" id="groupTabs" role="tablist">
+<ul class="nav nav-tabs custom-tabs mb-4" id="groupTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="group-tab" data-bs-toggle="tab" data-bs-target="#group" type="button" role="tab">
-            <i class="fas fa-users"></i> Группа
+            <i class="fas fa-users"></i>Состав класса
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="journal-tab" data-bs-toggle="tab" data-bs-target="#journal" type="button" role="tab">
-            <i class="fas fa-book-open"></i> Журнал класса
+            <i class="fas fa-book-open"></i>Электронный журнал
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab">
-            <i class="fas fa-calendar-alt"></i> Расписание
+            <i class="fas fa-calendar-alt"></i>Сетка расписания
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="chats-tab" data-bs-toggle="tab" data-bs-target="#chats" type="button" role="tab">
-            <i class="fas fa-comments"></i> Чаты
+            <i class="fas fa-comments"></i>Чаты обучения
         </button>
     </li>
 </ul>
 
-<!-- Содержимое вкладок -->
-<div class="tab-content" id="groupTabsContent">
-    <!-- Вкладка "Группа" – список учеников -->
-    <div class="tab-pane fade show active" id="group" role="tabpanel">
-        <div class="row">
+<div id="notification" class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow" style="z-index: 9999; display: none; border-radius: 10px;">
+    <i class="fas fa-check-circle me-2"></i><span id="notification-text"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
 
-            <div class="card shadow-sm">
-                <div class="card-header">Список учеников</div>
-                <div class="card-body">
-                    {% if members %}
-                    <ul class="list-group">
-                        {% for m in members %}
-                        <li class=" list-group-item d-flex justify-content-between align-items-center">
-                            {{ m.child.last_name }} {{ m.child.first_name }} ({{ m.child.birth_date|date:"d.m.Y" }})
-                            <small class="text-muted">добавлен {{ m.added_at|date:"d.m.Y" }}</small>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p class="text-muted">Учеников пока нет. Добавьте первого.</p>
-                    {% endif %}
-                    <!-- Кнопка для добавления ученика (остаётся справа) -->
-                    <button type="button" class="btn btn-primary my-2" data-bs-toggle="modal" data-bs-target="#addStudentModal">
-                        <i class="fas fa-user-plus"></i> Добавить ученика
-                    </button>
-                </div>
+<div class="tab-content" id="groupTabsContent">
+    
+    <div class="tab-pane fade show active" id="group" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 fw-bold text-dark border-bottom d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-list-ol text-primary me-2"></i>Зачисленные студенты</span>
+                <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <i class="fas fa-user-plus me-1"></i> Добавить ученика
+                </button>
             </div>
-            
+            <div class="card-body p-0">
+                {% if members %}
+                <div class="table-responsive border-0 shadow-none m-0">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;" class="text-center">№</th>
+                                <th>ФИО Студента</th>
+                                <th class="text-center">Дата рождения</th>
+                                <th class="text-end">Дата зачисления</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in members %}
+                            <tr>
+                                <td class="text-center text-muted small fw-medium">{{ forloop.counter }}</td>
+                                <td class="fw-bold text-dark">{{ m.child.last_name }} {{ m.child.first_name }}</td>
+                                <td class="text-center"><span class="badge bg-light text-secondary">{{ m.child.birth_date|date:"d.m.Y" }}</span></td>
+                                <td class="text-end text-muted small">добавлен {{ m.added_at|date:"d.m.Y" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-user-slash text-muted fa-2x mb-2"></i>
+                    <p class="text-muted small m-0">Учеников в этой группе пока нет.</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Вкладка "Журнал класса" -->
     <div class="tab-pane fade" id="journal" role="tabpanel">
         {% if schedules %}
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="save_journal" value="1">
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle">
+                    <table class="table table-bordered align-middle m-0 text-center">
                         <thead>
                             <tr>
-                                <th style="min-width: 120px;">Ученик</th>
+                                <th style="min-width: 180px;" class="text-start bg-light">ФИО Ученика</th>
                                 {% for s in schedules %}
-                                    <th class="text-center">
-                                        {{ s.date|date:"d.m" }}<br>
-                                        <small>{{ s.topic|truncatechars:12 }}</small>
+                                    <th style="min-width: 110px;">
+                                        <div class="fw-bold text-dark">{{ s.date|date:"d.m" }}</div>
+                                        <small class="text-muted d-block text-truncate mx-auto" style="max-width: 90px;" title="{{ s.topic }}">{{ s.topic|default:"Без темы" }}</small>
                                     </th>
                                 {% endfor %}
                             </tr>
@@ -87,21 +188,25 @@
                         <tbody>
                             {% for row in journal_rows %}
                             <tr>
-                                <th>{{ row.student.last_name }} {{ row.student.first_name }}</th>
+                                <th class="text-start bg-light fw-semibold text-dark">{{ row.student.last_name }} {{ row.student.first_name }}</th>
                                 {% for entry in row.entries_list %}
-                                    <td class="text-center" style="min-width: 100px;">
-                                        <input type="text" name="grade_{{ entry.id }}" value="{{ entry.grade }}"
-                                            class="form-control form-control-sm d-inline-block w-50" placeholder="оценка">
-                                        <input type="hidden" name="attendance_{{ entry.id }}" value="false">
-                                        <input type="checkbox" name="attendance_{{ entry.id }}" value="true"
-                                            {% if entry.attendance %}checked{% endif %}
-                                            class="form-check-input ms-1" style="transform: scale(1.2);">
-                                        <!-- Иконка для комментария -->
-                                        <i class="fas fa-comment text-secondary ms-1" style="cursor: pointer;"
-                                        data-bs-toggle="collapse" data-bs-target="#comment-{{ entry.id }}"></i>
+                                    <td>
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            <input type="text" name="grade_{{ entry.id }}" value="{{ entry.grade }}"
+                                                   class="form-control form-control-sm journal-grade-input shadow-sm" placeholder="—">
+                                            
+                                            <input type="hidden" name="attendance_{{ entry.id }}" value="false">
+                                            <input type="checkbox" name="attendance_{{ entry.id }}" value="true"
+                                                   {% if entry.attendance %}checked{% endif %}
+                                                   class="form-check-input shadow-sm m-0" title="Посещаемость" style="width: 1.2rem; height: 1.2rem;">
+                                            
+                                            <i class="fas fa-comment-alt text-muted ms-1 comment-trigger" style="cursor: pointer; font-size: 0.95rem;"
+                                               data-bs-toggle="collapse" data-bs-target="#comment-{{ entry.id }}" title="Добавить заметку"></i>
+                                        </div>
+                                        
                                         <div class="collapse mt-2" id="comment-{{ entry.id }}">
-                                            <textarea name="comment_{{ entry.id }}" class="form-control form-control-sm"
-                                                    rows="2" placeholder="Комментарий">{{ entry.comment }}</textarea>
+                                            <textarea name="comment_{{ entry.id }}" class="form-control form-control-sm shadow-sm"
+                                                      rows="2" placeholder="Заметка к уроку..." style="font-size: 0.75rem; min-width: 120px;">{{ entry.comment }}</textarea>
                                         </div>
                                     </td>
                                 {% endfor %}
@@ -110,51 +215,57 @@
                         </tbody>
                     </table>
                 </div>
-                <button type="submit" class="btn btn-primary mt-3">Сохранить журнал</button>
+                <button type="submit" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm mt-3">
+                    <i class="fas fa-save me-1"></i> Сохранить журнал класса
+                </button>
             </form>
         {% else %}
-            <div class="alert alert-warning">Сначала создайте расписание для группы (вкладка «Расписание»).</div>
+            <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-2">
+                <i class="fas fa-exclamation-circle fs-5"></i>
+                <span>Сначала сгенерируйте даты занятий во вкладке <strong>«Расписание»</strong>, чтобы открылся журнал.</span>
+            </div>
         {% endif %}
     </div>
 
-    <!-- Вкладка "Расписание" -->
     <div class="tab-pane fade" id="schedule" role="tabpanel">
-        <div class="d-flex justify-content-end mb-3">
-            <button type="button" class="btn btn-{% if has_schedule %}outline-secondary{% else %}primary{% endif %} btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
-                <i class="fas {% if has_schedule %}fa-edit{% else %}fa-plus{% endif %}"></i>
-                {% if has_schedule %}Редактировать расписание{% else %}Создать расписание{% endif %}
-            </button>
-            <button type="button" class="btn btn-success btn-sm me-2" id="saveAllChanges">
-                <i class="fas fa-save"></i> Сохранить изменения
-            </button>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small"><i class="fas fa-info-circle me-1"></i> Кликните по ячейке дня, чтобы вписать тему урока. Не забудьте сохранить изменения.</span>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-{% if has_schedule %}outline-secondary{% else %}primary{% endif %} btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                    <i class="fas {% if has_schedule %}fa-edit{% else %}fa-plus{% endif %} me-1"></i>
+                    {% if has_schedule %}Настройки сетки{% else %}Создать расписание{% endif %}
+                </button>
+                <button type="button" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm" id="saveAllChanges">
+                    <i class="fas fa-save me-1"></i> Сохранить изменения
+                </button>
+            </div>
         </div>
 
         {% if has_schedule %}
-        <div id="notification" class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999; display: none;">
-            <span id="notification-text"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
         <div class="table-responsive">
-            <table class="table table-bordered text-center align-middle">
+            <table class="table table-bordered text-center align-middle m-0">
                 <thead>
                     <tr>
-                        <th class="bg-light">День / Неделя</th>
+                        <th class="bg-light fw-bold text-dark" style="width: 140px;">День недели</th>
                         {% for week in weeks %}
-                            <th class="bg-light">{{ week.start|date:"d.m" }} – {{ week.end|date:"d.m" }}</th>
+                            <th class="bg-light text-secondary">
+                                <span class="text-dark fw-bold d-block">{{ week.start|date:"d.m" }}</span>
+                                <span style="font-size: 0.75rem;">{{ week.end|date:"d.m" }}</span>
+                            </th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for day_name in weekday_names %}
                     <tr>
-                        <th class="bg-light">{{ day_name }}</th>
+                        <th class="bg-light text-start ps-3 text-dark fw-semibold">{{ day_name }}</th>
                         {% for week in weeks %}
                             {% with day_index=forloop.parentloop.counter0 %}
                                 {% with lessons=week.days|get_item:day_index %}
                                     {% with lesson=lessons|first %}
                                     <td data-date="{{ week.days_dates|get_item:day_index|date:'Y-m-d' }}" 
-                                        class="{% if lesson.topic %}bg-success bg-opacity-25{% endif %}"
-                                        style="cursor: pointer;">
+                                        class="schedule-cell {% if lesson.topic %}cell-filled{% endif %}"
+                                        style="height: 55px;">
                                         {{ lesson.topic|default:"" }}
                                     </td>
                                     {% endwith %}
@@ -167,148 +278,165 @@
             </table>
         </div>
         {% else %}
-            <p class="text-muted text-center py-4">Расписание не задано. Нажмите «Создать расписание».</p>
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed">
+                <i class="far fa-calendar-times text-muted fa-3x mb-3"></i>
+                <h5 class="text-secondary fw-bold">Шаблон расписания не задан</h5>
+                <p class="text-muted small mb-0">Сгенерируйте расписание по дням недели для автоматического построения семестра.</p>
+            </div>
         {% endif %}
     </div>
 
-    <!-- Вкладка "Чаты" -->
     <div class="tab-pane fade" id="chats" role="tabpanel">
-        <!-- Блок группового чата -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <span>Общий чат группы</span>
-                {% with room=group.chat_rooms.first %}
-                    {% if room %}
-                        <a href="{% url 'teacher:group_chat_redirect' group.id %}" class="btn btn-light btn-sm">Перейти в чат</a>
-                    {% else %}
-                        <form method="post" action="{% url 'teacher:create_group_chat_for_group' group.id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-light btn-sm">Создать групповой чат</button>
-                        </form>
-                    {% endif %}
-                {% endwith %}
-            </div>
-            <div class="card-body">
-                {% with room=group.chat_rooms.first %}
-                    {% if room %}
-                        <div id="group-chat-preview" style="max-height: 200px; overflow-y: auto;">
-                            {% for msg in room.messages.all|slice:":5" %}
-                                <div><strong>{{ msg.sender.username }}:</strong> {{ msg.content|truncatechars:50 }}</div>
-                            {% empty %}
-                                <p class="text-muted">Нет сообщений</p>
-                            {% endfor %}
-                        </div>
-                        <a href="{% url 'teacher:group_chat_redirect' group.id %}" class="btn btn-outline-primary btn-sm mt-2">Все сообщения →</a>
-                    {% else %}
-                        <p class="text-muted">Групповой чат не создан. Нажмите кнопку выше, чтобы создать.</p>
-                    {% endif %}
-                {% endwith %}
-            </div>
-        </div>
-
-        <!-- Список родителей для личного чата -->
-        <div class="card">
-            <div class="card-header bg-secondary text-white">Родители учеников группы</div>
-            <div class="card-body">
-                <div class="list-group">
-                    {% for member in members %}
-                        {% with parent=member.child.parent %}
-                            {% if parent %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ parent.last_name }} {{ parent.first_name }}</strong><br>
-                                        <small>ученик: {{ member.child.last_name }} {{ member.child.first_name }}</small>
-                                    </div>
-                                    <a href="{% url 'chat:create_private_chat' parent.id %}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-comment"></i> Написать
-                                    </a>
+        <div class="row g-4">
+            
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 shadow-sm rounded-3">
+                    <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center rounded-top-3">
+                        <span class="fw-bold"><i class="fas fa-users me-2"></i>Общий групповой чат класс</span>
+                        {% with room=group.chat_rooms.first %}
+                            {% if room %}
+                                <a href="{% url 'teacher:group_chat_redirect' group.id %}" class="btn btn-light btn-sm px-3 rounded-pill fw-semibold shadow-sm text-primary">Открыть чат</a>
+                            {% else %}
+                                <form method="post" action="{% url 'teacher:create_group_chat_for_group' group.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-light btn-sm px-3 rounded-pill fw-semibold text-primary">Создать чат</button>
+                                </form>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    <div class="card-body">
+                        {% with room=group.chat_rooms.first %}
+                            {% if room %}
+                                <div class="bg-light p-3 rounded-3 mb-3" style="height: 160px; overflow-y: auto; font-size: 0.85rem;">
+                                    {% for msg in room.messages.all|slice:":5" %}
+                                        <div class="mb-2">
+                                            <strong class="text-secondary">{{ msg.sender.username }}:</strong> 
+                                            <span class="text-dark">{{ msg.content|striptags|truncatechars:45 }}</span>
+                                        </div>
+                                    {% empty %}
+                                        <p class="text-muted italic text-center py-4 m-0">История сообщений пуста.</p>
+                                    {% endfor %}
+                                </div>
+                                <a href="{% url 'teacher:group_chat_redirect' group.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">История переписки →</a>
+                            {% else %}
+                                <div class="text-center py-4 text-muted">
+                                    <i class="far fa-comments fa-2x mb-2 text-muted"></i>
+                                    <p class="small m-0">Групповая комната еще не была инициализирована преподавателем.</p>
                                 </div>
                             {% endif %}
                         {% endwith %}
-                    {% empty %}
-                        <p class="text-muted">Нет добавленных родителей.</p>
-                    {% endfor %}
+                    </div>
                 </div>
             </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 shadow-sm rounded-3">
+                    <div class="card-header bg-secondary text-white py-3 fw-bold rounded-top-3">
+                        <i class="fas fa-user-shield me-2"></i>Приватные чаты с родителями
+                    </div>
+                    <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                        <div class="list-group list-group-flush m-0">
+                            {% for member in members %}
+                                {% with parent=member.child.parent %}
+                                    {% if parent %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                                            <div>
+                                                <div class="fw-bold text-dark">{{ parent.last_name }} {{ parent.first_name }}</div>
+                                                <small class="text-muted">Родитель ученика: <span class="fw-medium text-secondary">{{ member.child.last_name }} {{ member.child.first_name }}</span></small>
+                                            </div>
+                                            <a href="{% url 'chat:create_private_chat' parent.id %}" class="btn btn-sm btn-primary px-3 rounded-pill fw-semibold shadow-sm">
+                                                <i class="far fa-comment-alt me-1"></i> Диалог
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            {% empty %}
+                                <div class="text-center py-4 text-muted small">Нет зачисленных студентов и родителей.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
-<!-- Модальное окно добавления ученика (без изменений) -->
 <div class="modal fade" id="addStudentModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Добавить ученика</h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold text-dark"><i class="fas fa-user-plus text-primary me-2"></i>Зачислить студента</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    {{ form.child.label_tag }}
-                    {{ form.child }}
-                    <small class="text-muted">Показываются дети, ещё не добавленные в эту группу.</small>
+                <div class="modal-body px-4">
+                    <div class="mb-3 student-select-wrapper">
+                        <label class="form-label fw-semibold text-secondary">{{ form.child.label }}</label>
+                        {{ form.child }}
+                    </div>
+                    <small class="text-muted d-block bg-light p-2.5 rounded-3"><i class="fas fa-info-circle text-primary me-1"></i>В выпадающем меню отображаются только те дети центра, которые на данный момент свободны и не состоят в этой группе.</small>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" name="add_student" class="btn btn-primary">Добавить</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="add_student" class="btn btn-primary px-4 btn-sm rounded-pill shadow-sm">Зачислить</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<!-- Модальное окно (в конце шаблона, после закрывающего тега .tab-content) -->
-<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
+
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form method="post" action="{% url 'teacher:generate_schedule_group' group.id %}">
                 {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title" id="scheduleModalLabel">
-                        {% if has_schedule %}Редактировать расписание{% else %}Создать расписание{% endif %}
-                    </h5>
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title fw-bold text-dark"><i class="far fa-calendar-alt text-primary me-2"></i>Генерация сетки семестра</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body px-4 py-3">
                     <div class="mb-3">
-                        <label class="form-label">Дни недели</label>
-                        <div class="row">
+                        <label class="form-label fw-semibold text-secondary d-block mb-2">Дни проведения занятий</label>
+                        <div class="row g-2 bg-light p-3 rounded-3 border">
                             <div class="col-4">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="weekdays" value="mon" id="day_mon" {% if 'mon' in selected_weekdays %}checked{% endif %}>
-                                    <label class="form-check-label" for="day_mon">Пн</label>
+                                    <label class="form-check-label fw-medium text-dark" for="day_mon">Пн</label>
                                 </div>
                             </div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="tue" id="day_tue" {% if 'tue' in selected_weekdays %}checked{% endif %}><label for="day_tue">Вт</label></div></div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="wed" id="day_wed" {% if 'wed' in selected_weekdays %}checked{% endif %}><label for="day_wed">Ср</label></div></div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="thu" id="day_thu" {% if 'thu' in selected_weekdays %}checked{% endif %}><label for="day_thu">Чт</label></div></div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="fri" id="day_fri" {% if 'fri' in selected_weekdays %}checked{% endif %}><label for="day_fri">Пт</label></div></div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="sat" id="day_sat" {% if 'sat' in selected_weekdays %}checked{% endif %}><label for="day_sat">Сб</label></div></div>
-                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="sun" id="day_sun" {% if 'sun' in selected_weekdays %}checked{% endif %}><label for="day_sun">Вс</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="tue" id="day_tue" {% if 'tue' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_tue">Вт</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="wed" id="day_wed" {% if 'wed' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_wed">Ср</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="thu" id="day_thu" {% if 'thu' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_thu">Чт</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="fri" id="day_fri" {% if 'fri' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_fri">Пт</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="sat" id="day_sat" {% if 'sat' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_sat">Сб</label></div></div>
+                            <div class="col-4"><div class="form-check"><input class="form-check-input" type="checkbox" name="weekdays" value="sun" id="day_sun" {% if 'sun' in selected_weekdays %}checked{% endif %}><label class="form-check-label fw-medium text-dark" for="day_sun">Вс</label></div></div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Время начала</label>
-                        <input type="time" name="start_time" class="form-control" value="{{ start_time|time:'H:i' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Время окончания</label>
-                        <input type="time" name="end_time" class="form-control" value="{{ end_time|time:'H:i' }}">
+                    <div class="row g-3 mb-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small">Время начала</label>
+                            <input type="time" name="start_time" class="form-control form-control-sm" value="{{ start_time|time:'H:i' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small">Время окончания</label>
+                            <input type="time" name="end_time" class="form-control form-control-sm" value="{{ end_time|time:'H:i' }}">
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Сгенерировать</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-3 btn-sm rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4 btn-sm rounded-pill shadow-sm">Сгенерировать</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-
-
 <script>
-   function showMessage(message, type = 'success') {
+// Всплывающие уведомления коммитов
+function showMessage(message, type = 'success') {
     const notification = document.getElementById('notification');
     const textSpan = document.getElementById('notification-text');
     textSpan.innerText = message;
@@ -322,46 +450,14 @@
         notification.style.display = 'none';
     }, 3000);
 }
-// Функция для переключения вкладок (оставляем как есть)
-document.getElementById('saveAllChanges')?.addEventListener('click', function() {
-    const cells = document.querySelectorAll('#schedule tbody td');
-    console.log('Найдено ячеек:', cells.length);
-    const changes = [];
-    cells.forEach(td => {
-        const date = td.getAttribute('data-date');
-        console.log('Ячейка: дата=' + date + ', текст=' + td.innerText);
-        if (date) {
-            let text = td.innerText.trim();
-            if (text === '— добавить') text = '';
-            changes.push({ date: date, text: text });
-        }
-    });
-    if (changes.length === 0) {
-        showMessage('Нет ячеек для сохранения', 'warning');
-        return;
-    }
-    // Отправка на сервер (оставьте как у вас)
-    fetch(`/teacher/save_all_changes/{{ group.id }}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ changes: changes })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'ok') {
-            showMessage('Изменения сохранены', 'success');
-            location.reload();
-        } else {
-            showMessage('Ошибка: ' + (data.error || 'неизвестная ошибка'), 'danger');
-        }
-    })
-    .catch(err => showMessage('Ошибка соединения: ' + (err || 'неизвестная ошибка'), 'danger'));
-});
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Красиво стилизуем встроенные Django формы
+    document.querySelectorAll('.student-select-wrapper select').forEach(select => {
+        select.classList.add('form-select');
+    });
+
+    // Хэш-навигация по табам (сохраняет вкладку при перезагрузке страницы)
     if (window.location.hash) {
         var tab = document.querySelector('#groupTabs button[data-bs-target="' + window.location.hash + '"]');
         if (tab) new bootstrap.Tab(tab).show();
@@ -373,14 +469,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Сохранение всех изменений в расписании
+// Сохранение всех изменений в расписании (Ajax)
 document.getElementById('saveAllChanges')?.addEventListener('click', function() {
     const changes = [];
-    // Проходим по всем ячейкам таблицы расписания
-    document.querySelectorAll('#schedule tbody td').forEach(td => {
+    document.querySelectorAll('.schedule-cell').forEach(td => {
         const date = td.getAttribute('data-date');
         if (date) {
-            // Берём текст из ячейки (убираем лишние пробелы)
             let text = td.innerText.trim();
             if (text === '— добавить') text = '';
             changes.push({ date: date, text: text });
@@ -401,26 +495,26 @@ document.getElementById('saveAllChanges')?.addEventListener('click', function() 
     .then(response => response.json())
     .then(data => {
         if (data.status === 'ok') {
-            showMessage('Изменения сохранены', 'success');
-            location.reload(); // перезагружаем, чтобы отобразить актуальные данные из БД
+            showMessage('Изменения расписания сохранены!', 'success');
+            setTimeout(() => { location.reload(); }, 600);
         } else {
-            showMessage('Ошибка: ' + (data.error || 'неизвестная ошибка'), 'danger');
+            showMessage('Ошибка: ' + (data.error || 'неизвестный сбой'), 'danger');
         }
     })
-    .catch(err => showMessage('Ошибка: ' + (data.error || 'неизвестная ошибка'), 'danger'));
+    .catch(err => showMessage('Ошибка соединения с базой', 'danger'));
 });
 
-// Редактирование ячейки (без автосохранения)
-document.querySelectorAll('#schedule tbody td').forEach(td => {
+// Интерактивное inline-редактирование ячеек расписания
+document.querySelectorAll('.schedule-cell').forEach(td => {
     td.addEventListener('click', function(e) {
         if (td.querySelector('input')) return;
         const currentText = td.innerText.trim() === '— добавить' ? '' : td.innerText;
         const input = document.createElement('input');
         input.value = currentText;
-        input.style.width = '100%';
-        input.style.border = 'none';
+        input.className = 'form-control form-control-sm text-center border-0 p-0 fw-medium';
         input.style.background = 'transparent';
         input.style.outline = 'none';
+        input.style.color = '#065f46';
         td.innerHTML = '';
         td.appendChild(input);
         input.focus();
@@ -428,8 +522,11 @@ document.querySelectorAll('#schedule tbody td').forEach(td => {
         function finishEdit() {
             const newText = input.value.trim();
             td.innerHTML = newText || '';
-            if (newText) td.classList.add('bg-success', 'bg-opacity-25');
-            else td.classList.remove('bg-success', 'bg-opacity-25');
+            if (newText) {
+                td.classList.add('cell-filled');
+            } else {
+                td.classList.remove('cell-filled');
+            }
         }
 
         input.addEventListener('blur', finishEdit);

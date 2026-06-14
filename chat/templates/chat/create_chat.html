@@ -2,14 +2,193 @@
 
 {% block title %}Создать чат{% endblock %}
 
+{% block extra_css %}
+<style>
+    .create-chat-card {
+        border: none;
+        border-radius: 16px;
+        background-color: #fff;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Стилизация радио-кнопок типа чата */
+    .chat-type-group {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 1.5rem;
+    }
+    .chat-type-group input[type="radio"] {
+        display: none;
+    }
+    .chat-type-label {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        color: #64748b;
+        transition: all 0.2s ease;
+    }
+    .chat-type-group input[type="radio"]:checked + .chat-type-label {
+        border-color: #0d6efd;
+        color: #0d6efd;
+        background-color: #f0f7ff;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.08);
+    }
+
+    /* Кастомизация списка участников */
+    .participants-scroll-zone {
+        max-height: 280px;
+        overflow-y: auto;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 10px;
+        background-color: #f8fafc;
+    }
+    .participant-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background-color: #fff;
+        margin-bottom: 6px;
+        border: 1px solid #e2e8f0;
+        transition: background-color 0.15s;
+        cursor: pointer;
+    }
+    .participant-item:hover {
+        background-color: #f1f5f9;
+    }
+    .participant-item input[type="checkbox"] {
+        width: 1.15rem;
+        height: 1.15rem;
+        margin-right: 12px;
+        cursor: pointer;
+    }
+    .participant-avatar-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #e2e8f0;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-    <h2>Создать новый чат</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-success">Создать</button>
-        <a href="{% url 'chat:chat_list' %}" class="btn btn-secondary">Отмена</a>
-    </form>
+<div class="container py-2" style="max-width: 700px;">
+    
+    <div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark m-0">Новый диалог</h1>
+            <p class="text-muted small mb-0">Создайте личную переписку или групповую комнату обсуждения</p>
+        </div>
+        <a href="{% url 'chat:chat_list' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
+            <i class="fas fa-arrow-left me-1"></i> Отмена
+        </a>
+    </div>
+
+    <div class="card create-chat-card p-4">
+        <form method="post" id="createChatForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3">
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="mb-4">
+                <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">Тип переписки</label>
+                <div class="chat-type-group">
+                    <input type="radio" name="chat_type" value="private" id="type_private" {% if form.chat_type.value == 'private' or not form.chat_type.value %}checked{% endif %}>
+                    <label for="type_private" class="chat-type-label">
+                        <i class="fas fa-user fs-5"></i> Личный чат
+                    </label>
+
+                    <input type="radio" name="chat_type" value="group" id="type_group" {% if form.chat_type.value == 'group' %}checked{% endif %}>
+                    <label for="type_group" class="chat-type-label">
+                        <i class="fas fa-users fs-5"></i> Групповой чат
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-4 d-none" id="chatNameFieldWrapper">
+                <label for="id_name" class="form-label fw-bold text-secondary small text-uppercase tracking-wider">Название группового чата</label>
+                <input type="text" name="name" id="id_name" class="form-control py-2 shadow-sm" style="border-radius: 10px;" placeholder="Например: Родительский комитет 2А" value="{{ form.name.value|default:'' }}">
+                {% if form.name.errors %}
+                    <div class="text-danger small mt-1">{% for error in form.name.errors %}{{ error }}{% endfor %}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">Выберите участников</label>
+                {% if form.participants.errors %}
+                    <div class="alert alert-danger py-1.5 px-3 small rounded-3 mb-2">
+                        {% for error in form.participants.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+                
+                <div class="participants-scroll-zone shadow-inner">
+                    {% for pk, label in form.fields.participants.choices %}
+                        <label class="participant-item m-0">
+                            <input type="checkbox" name="participants" value="{{ pk }}" class="form-check-input"
+                                   {% if pk|stringformat:"s" in form.participants.value or pk in form.participants.value %}checked{% endif %}>
+                            <div class="participant-avatar-icon">
+                                <i class="far fa-user"></i>
+                            </div>
+                            <span class="fw-semibold text-dark" style="font-size: 0.925rem;">{{ label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="pt-2 border-top d-flex justify-content-end gap-2">
+                <a href="{% url 'chat:chat_list' %}" class="btn btn-light px-4 rounded-pill">Назад</a>
+                <button type="submit" class="btn btn-success px-5 rounded-pill shadow-sm fw-semibold">
+                    <i class="fas fa-comments me-1"></i> Инициализировать чат
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const privateRadio = document.getElementById('type_private');
+        const groupRadio = document.getElementById('type_group');
+        const nameWrapper = document.getElementById('chatNameFieldWrapper');
+        const nameInput = document.getElementById('id_name');
+
+        function toggleNameField() {
+            if (groupRadio.checked) {
+                nameWrapper.classList.remove('d-none');
+                nameInput.setAttribute('required', 'required');
+            } else {
+                nameWrapper.classList.add('d-none');
+                nameInput.removeAttribute('required');
+                nameInput.value = ''; // Очищаем поле, если вернулись на приватный
+            }
+        }
+
+        // Слушаем переключения радио-кнопок типа чата
+        privateRadio.addEventListener('change', toggleNameField);
+        groupRadio.addEventListener('change', toggleNameField);
+
+        // Проверяем состояние при первой загрузке (если форма вернулась с ошибкой)
+        toggleNameField();
+    });
+</script>
 {% endblock %}
