@@ -20,9 +20,9 @@
         padding: 1.5rem 2rem;
     }
 
-    /* УВЕЛИЧИЛИ ОТСТУПЫ МЕЖДУ БЛОКАМИ ПОЛЕЙ ВВОДА */
+    /* Воздушные отступы между блоками полей ввода */
     .form-group-spacing {
-        margin-bottom: 1.75rem !important; /* Больше свободного места между полями */
+        margin-bottom: 1.75rem !important; 
     }
 
     /* Прокачка текстовых полей и селекторов Django */
@@ -33,7 +33,7 @@
     .form-profile-card .form-select {
         display: block;
         width: 100%;
-        padding: 0.75rem 1.2rem; /* Сделали поля чуть выше и просторнее внутри */
+        padding: 0.75rem 1.2rem; 
         font-size: 0.95rem;
         font-weight: 400;
         line-height: 1.5;
@@ -55,14 +55,23 @@
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
     }
 
-    /* Кастомные лейблы (подписи полей) — теперь они четко отделены от прошлых блоков */
+    /* Визуальный стиль для заблокированных полей */
+    .form-profile-card input:disabled,
+    .form-profile-card select:disabled {
+        background-color: #f8fafc !important;
+        color: #64748b !important;
+        border-color: #e2e8f0 !important;
+        cursor: not-allowed;
+    }
+
+    /* Кастомные лейблы */
     .form-profile-card .form-label-custom {
         font-weight: 600;
         font-size: 0.8rem;
-        color: #64748b; /* Чуть мягче цвет текста подписей */
+        color: #64748b; 
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 0.6rem; /* Идеальный отступ до самого инпута */
+        margin-bottom: 0.6rem; 
         display: block;
     }
 
@@ -104,6 +113,23 @@
                 </div>
                 
                 <div class="card-body p-4 px-4 px-md-5">
+                    
+                    {% if not can_edit %}
+                        <div class="alert alert-warning border-0 d-flex align-items-start gap-3 p-3 mb-4" style="background-color: #fffbeb; border-radius: 14px;">
+                            <i class="fas fa-lock text-warning fs-5 mt-0.5"></i>
+                            <div>
+                                <h6 class="fw-bold text-warning-emphasis mb-1" style="font-size: 0.95rem;">Редактирование заблокировано</h6>
+                                <p class="text-secondary small m-0" style="line-height: 1.4;">
+                                    {% if has_paid_or_confirmed %}
+                                        Этот ребёнок успешно зачислен на курс (заявка подтверждена/оплачена). Изменение персональных данных заблокировано.
+                                    {% elif has_pending %}
+                                        Данные ребёнка отправлены вместе с текущей заявкой и находятся на проверке. Редактирование станет доступно, если заявку отклонят.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    {% endif %}
+
                     <form method="post" autocomplete="off">
                         {% csrf_token %}
                         
@@ -130,20 +156,27 @@
                         
                         <div class="form-group-spacing">
                             <label class="form-label-custom"><i class="far fa-calendar-alt me-1.5 opacity-50"></i>Дата рождения</label>
-                            {{ form.birth_date }}
+                            {% if form.birth_date.value %}
+                                <input type="date" name="birth_date" id="id_birth_date" class="form-control" value="{{ form.birth_date.value|date:'Y-m-d' }}" {% if not can_edit %}disabled{% endif %}>
+                            {% else %}
+                                <input type="date" name="birth_date" id="id_birth_date" class="form-control" {% if not can_edit %}disabled{% endif %}>
+                            {% endif %}
                         </div>
                         
-                        <div class="mb-2"> <label class="form-label-custom"><i class="fas fa-venus-mars me-1.5 opacity-50"></i>Пол ребенка</label>
+                        <div class="mb-2"> 
+                            <label class="form-label-custom"><i class="fas fa-venus-mars me-1.5 opacity-50"></i>Пол ребенка</label>
                             {{ form.gender }}
                         </div>
                         
                         <div class="d-flex align-items-center justify-content-end gap-2 border-top pt-4 mt-4">
                             <a href="{% url 'home:dashboard' %}" class="btn btn-light btn-cancel-custom text-secondary border">
-                                Отмена
+                                Назад
                             </a>
-                            <button type="submit" class="btn btn-save-custom">
-                                <i class="fas fa-check-circle me-1"></i> Сохранить данные
-                            </button>
+                            {% if can_edit %}
+                                <button type="submit" class="btn btn-save-custom">
+                                    <i class="fas fa-check-circle me-1"></i> Сохранить данные
+                                </button>
+                            {% endif %}
                         </div>
                     </form>
                 </div>

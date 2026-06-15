@@ -98,6 +98,9 @@
                             <div style="min-width: 0;">
                                 <div class="fw-bold text-dark text-truncate" style="font-size: 0.875rem;">{{ child.last_name }} {{ child.first_name }}</div>
                                 <small class="text-muted" style="font-size: 0.75rem;"><i class="far fa-calendar-alt me-1"></i>{{ child.birth_date|date:"d.m.Y" }}</small>
+                                <a href="{% url 'accounts:edit_child' child.id %}" class="text-muted ms-2 hover-opacity-100" title="Редактировать">
+                                    <i class="fas fa-edit small"></i>
+                                </a>
                             </div>
                             <form method="post" action="{% url 'accounts:delete_child' child.id %}" 
                                   onsubmit="return confirm('Удалить ребёнка? Все связанные заявки останутся, но ребёнок будет удалён из списка.')" class="m-0 ms-2">
