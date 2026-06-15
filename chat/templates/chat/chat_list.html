@@ -6,44 +6,56 @@
 <style>
     /* Стили для продвинутого списка чатов */
     .chat-item-card {
-        border: none;
-        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
         background-color: #fff;
-        transition: all 0.2s ease;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         border-left: 4px solid transparent;
     }
     .chat-item-card:hover {
         transform: translateX(4px);
         background-color: #f8fafc;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-        border-left-color: #0d6efd;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04) !important;
+        border-left-color: #0d6efd; /* Наш фирменный технологичный синий */
     }
     .hidden-chat-card {
-        border-left: 4px solid #dc3545; /* Красная полоска для скрытых чатов */
+        border-left: 4px solid #ef4444; /* Мягкий красный оттенок для скрытых чатов */
     }
     .hidden-chat-card:hover {
-        border-left-color: #bb2d3b;
+        border-left-color: #dc2626;
     }
+    
     /* Стили для круглых аватарок в списке */
     .list-avatar {
-        width: 44px;
-        height: 44px;
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
         color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        font-size: 1rem;
+        font-weight: 700;
+        font-size: 1.05rem;
         text-transform: uppercase;
         user-select: none;
         flex-shrink: 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
     .chat-type-badge {
         font-size: 0.75rem;
-        padding: 3px 6px;
+        padding: 4px 10px;
         border-radius: 20px;
+        font-weight: 600;
+    }
+
+    /* Синие и нейтральные пастельные бейджи */
+    .badge-group-chat {
+        background-color: #eff6ff !important;
+        color: #1d4ed8 !important;
+    }
+    .badge-private-chat {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
     }
 </style>
 {% endblock %}
@@ -53,10 +65,10 @@
     
     <div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
         <div>
-            <h1 class="h2 fw-bold text-dark m-0">Внутренний мессенджер</h1>
+            <h1 class="h3 fw-bold text-dark m-0">Внутренний мессенджер</h1>
             <p class="text-muted small mb-0">Общайтесь со студентами и коллегами-преподавателями в реальном времени</p>
         </div>
-        <a href="{% url 'chat:create_chat' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm">
+        <a href="{% url 'chat:create_chat' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-semibold" style="background-color: #0d6efd; border-color: #0d6efd;">
             <i class="fas fa-plus-circle me-1"></i> Создать чат
         </a>
     </div>
@@ -74,25 +86,31 @@
                         </div>
 
                         <div style="min-width: 0;">
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold m-0 text-truncate" style="max-width: 250px;">{{ item.display_name }}</h6>
+                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                <h6 class="fw-bold m-0 text-dark text-truncate" style="max-width: 250px;">{{ item.display_name }}</h6>
                                 
                                 {% if item.room.room_type == 'group' %}
-                                    <span class="badge bg-primary-subtle text-primary chat-type-badge"><i class="fas fa-users"></i> Группа</span>
+                                    <span class="badge badge-group-chat chat-type-badge"><i class="fas fa-users me-1"></i> Группа</span>
                                 {% else %}
-                                    <span class="badge bg-secondary-subtle text-secondary chat-type-badge"><i class="fas fa-user"></i> Личный</span>
+                                    <span class="badge badge-private-chat chat-type-badge"><i class="fas fa-user me-1"></i> Личный</span>
                                 {% endif %}
                             </div>
                             
-                            <p class="text-muted small m-0 text-truncate">
+                            <p class="text-muted small m-0 text-truncate" style="font-size: 0.875rem;">
                                 {% if item.room.messages.last %}
-                                    <span class="fw-semibold text-secondary">{{ item.room.messages.last.sender.username }}:</span> 
-                                    {{ item.room.messages.last.content|striptags|default:"📎 Файл" }}
-                                    <span class="text-muted ms-2" style="font-size: 0.75rem;">
-                                        ({{ item.room.messages.last.timestamp|date:"H:i d.m.Y" }})
+                                    <span class="fw-semibold text-secondary">
+                                        {% if item.room.messages.last.sender.get_full_name %}
+                                            {{ item.room.messages.last.sender.get_full_name }}:
+                                        {% else %}
+                                            {{ item.room.messages.last.sender.username }}:
+                                        {% endif %}
+                                    </span> 
+                                    <span class="text-dark">{{ item.room.messages.last.content|striptags|default:"📎 Файл" }}</span>
+                                    <span class="text-muted ms-2" style="font-size: 0.75rem; opacity: 0.8;">
+                                        {{ item.room.messages.last.timestamp|date:"H:i d.m" }}
                                     </span>
                                 {% else %}
-                                    <span class="text-muted italic">Сообщений пока нет. Начните диалог!</span>
+                                    <span class="text-muted small italic">Сообщений пока нет. Начните диалог!</span>
                                 {% endif %}
                             </p>
                         </div>
@@ -105,7 +123,7 @@
                             </a>
                             {% if is_teacher %}
                                 <a href="{% url 'chat:delete_permanently' item.room.id %}" class="btn btn-sm btn-outline-danger px-3 rounded-pill" onclick="return confirm('Удалить чат полностью для всех?')">
-                                    <i class="fas fa-trash-alt me-1"></i> Удалить навсегда
+                                    <i class="fas fa-trash-alt me-1"></i> Удалить
                                 </a>
                             {% else %}
                                 <a href="{% url 'chat:delete_for_me' item.room.id %}" class="btn btn-sm btn-outline-secondary px-3 rounded-pill" onclick="return confirm('Скрыть чат из вашего списка?')">
@@ -113,7 +131,7 @@
                                 </a>
                             {% endif %}
                         {% else %}
-                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">Чат недоступен</span>
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2 small">Чат недоступен</span>
                         {% endif %}
                     </div>
 
@@ -122,19 +140,19 @@
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed">
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm border border-dashed">
                 <i class="far fa-comments text-muted fa-3x mb-3"></i>
-                <h5 class="text-secondary fw-bold">Нет доступных чатов</h5>
-                <p class="text-muted small mb-0">Список пуст. Вы можете создать новый диалог по кнопке выше.</p>
+                <h5 class="text-secondary fw-bold">Доступные диалоги отсутствуют</h5>
+                <p class="text-muted small mb-0">Список переписок пуст. Вы можете создать чат по кнопке выше.</p>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    {# ТОЛЬКО ДЛЯ ПРЕПОДАВАТЕЛЯ: список чатов, скрытых родителями #}
+    {# ТОЛЬКО ДЛЯ ПРЕПОДАВАТЕЛЯ: скрытые чаты #}
     {% if is_teacher %}
         <div class="mt-5 pt-4 border-top">
-            <h5 class="fw-bold text-danger mb-3">
+            <h5 class="fw-bold text-danger mb-3" style="font-size: 1.05rem;">
                 <i class="fas fa-exclamation-triangle me-2"></i>Чаты, скрытые родителями (требуют внимания)
             </h5>
             
@@ -145,8 +163,8 @@
                         <div class="d-flex align-items-center justify-content-between flex-wrap flex-md-nowrap gap-3">
                             
                             <div class="d-flex align-items-center gap-3 flex-grow-1">
-                                <div class="list-avatar bg-danger">
-                                    <i class="fas fa-eye-slash"></i>
+                                <div class="list-avatar bg-danger shadow-none" style="background-color: #ef4444 !important;">
+                                    <i class="fas fa-eye-slash" style="font-size: 0.9rem;"></i>
                                 </div>
                                 <div>
                                     <h6 class="fw-bold m-0 text-dark">{{ room.name|default:"Личный чат" }}</h6>
@@ -163,10 +181,10 @@
 
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 <a href="{% url 'chat:restore_for_user' room.id %}" class="btn btn-sm btn-success px-3 rounded-pill fw-semibold">
-                                    <i class="fas fa-undo me-1"></i> Восстановить для всех
+                                    <i class="fas fa-undo me-1"></i> Восстановить
                                 </a>
                                 <a href="{% url 'chat:delete_permanently' room.id %}" class="btn btn-sm btn-outline-danger px-3 rounded-pill" onclick="return confirm('Удалить чат полностью для всех?')">
-                                    <i class="fas fa-trash-alt me-1"></i> Удалить навсегда
+                                    <i class="fas fa-trash-alt Holiday me-1"></i> Удалить навсегда
                                 </a>
                             </div>
 
@@ -175,9 +193,9 @@
                 </div>
                 {% empty %}
                 <div class="col-12">
-                    <p class="text-muted small italic bg-light p-3 rounded-3 text-center border">
-                        <i class="fas fa-check-circle text-success me-1"></i> Нет скрытых родителями чатов. Все под контролем!
-                    </p>
+                    <div class="alert alert-light border rounded-3 text-muted m-0 p-3 small text-center">
+                        <i class="fas fa-check-circle text-success me-1.5"></i> Нет скрытых родителями чатов. Все под контролем!
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -202,7 +220,6 @@
             return colors[index];
         }
 
-        // Подкрашиваем аватарки по умному хэшу от display_name
         document.querySelectorAll('.list-avatar').forEach(avatar => {
             const stringKey = avatar.getAttribute('data-hash');
             if (stringKey) {
