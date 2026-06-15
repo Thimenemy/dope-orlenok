@@ -63,7 +63,14 @@ class CreateChatForm(forms.Form):
             
             participants_qs = (teachers | other_parents).distinct()
 
+        # Назначаем отфильтрованную выборку в поле формы
         self.fields['participants'].queryset = participants_qs
+
+        # --- ЖЕЛЕЗНОЕ ИСПРАВЛЕНИЕ ОТОБРАЖЕНИЯ ИМЕН ---
+        # Переопределяем функцию генерации текста метки для каждого чекбокса юзера
+        self.fields['participants'].label_from_instance = lambda obj: (
+            f"{obj.last_name} {obj.first_name}".strip() or obj.username
+        )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -73,6 +80,10 @@ class CreateChatForm(forms.Form):
 
         if chat_type == 'group' and not name:
             self.add_error('name', 'Для группового чата обязательно название')
-        if chat_type == 'private' and len(participants) != 1:
-            self.add_error('participants', 'В личном чате должен быть ровно один участник')
+        
+        # Защита от пустого значения или неверного выбора в приватном чате
+        if chat_type == 'private' and participants:
+            if len(participants) != 1:
+                self.add_error('participants', 'В личном чате должен быть ровно один участник')
+                
         return cleaned_data

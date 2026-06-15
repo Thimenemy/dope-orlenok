@@ -17,4 +17,5 @@ urlpatterns = [
     path('upload/<int:room_id>/', views.upload_attachment, name='upload_attachment'),
     path('edit_message/<int:message_id>/', views.edit_message, name='edit_message'),
     path('delete_message/<int:message_id>/', views.delete_message, name='delete_message'),
+    
 ]

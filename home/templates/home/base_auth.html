@@ -145,6 +145,11 @@
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'chat_list' or request.resolver_match.url_name == 'chat_detail' %}active{% endif %}" href="{% url 'chat:chat_list' %}">
                         <i class="fas fa-comments"></i> Чаты
+                        {% if unread_chats_count > 0 %}
+                            <span class="badge bg-danger rounded-pill px-2 py-0.5 shadow-sm font-monospace" style="font-size: 0.7rem; margin-left: 2px; vertical-align: middle;">
+                                {{ unread_chats_count }}
+                            </span>
+                        {% endif %}
                     </a>
                 </li>
                 <li class="nav-item">

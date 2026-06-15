@@ -141,9 +141,14 @@
                             <i class="fas fa-graduation-cap"></i> Мои Группы
                         </a>
                     </li>
-                    <li class="nav-item">
+                   <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'chat_list' or request.resolver_match.url_name == 'chat_detail' %}active{% endif %}" href="{% url 'chat:chat_list' %}">
                             <i class="fas fa-comments"></i> Мессенджер
+                            {% if unread_chats_count > 0 %}
+                                <span class="badge bg-danger rounded-pill ms-auto px-2 py-1 shadow-sm font-monospace" style="font-size: 0.75rem;">
+                                    {{ unread_chats_count }}
+                                </span>
+                            {% endif %}
                         </a>
                     </li>
                 </ul>

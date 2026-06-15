@@ -7,9 +7,9 @@ class ChatRoom(models.Model):
         ('private', 'Личный'),
     )
     room_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='private')
-    name = models.CharField(max_length=255, blank=True, null=True)  # для групповых чатов
+    name = models.CharField(max_length=255, blank=True, null=True)
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='chat_rooms')
-    teacher_group = models.ForeignKey('teacher.Group', on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_rooms')  # связь с учебной группой
+    teacher_group = models.ForeignKey('teacher.Group', on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_rooms')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_chats')
@@ -31,8 +31,11 @@ class ChatMessage(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
-    attachment = models.FileField(upload_to='chat_attachments/%Y/%m/%d/', null=True, blank=True)  # важно!
+    attachment = models.FileField(upload_to='chat_attachments/%Y/%m/%d/', null=True, blank=True)
     attachment_type = models.CharField(max_length=20, blank=True, null=True)
+
+    # --- ВОТ ОНО! ОДНО ПОЛЕ, КОТОРОЕ ЗАМЕНЯЕТ ЦЕЛУЮ МОДЕЛЬ ---
+    read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='read_messages')
 
     class Meta:
         ordering = ['timestamp']

@@ -24,9 +24,20 @@ def get_base_template(user):
         return 'teacher/base_teacher.html'
     return 'home/base_auth.html'
 
+from django.db.models import Count, Q
+
 @login_required
 def chat_list(request):
-    rooms = request.user.chat_rooms.exclude(deleted_for=request.user).order_by('-updated_at')
+    # Получаем комнаты, аннотируя каждую количеством непрочитанных сообщений (не от себя и не прочитанных мной)
+    rooms = request.user.chat_rooms.exclude(
+        deleted_for=request.user
+    ).annotate(
+        unread_count=Count(
+            'messages',
+            filter=~Q(messages__sender=request.user) & ~Q(messages__read_by=request.user)
+        )
+    ).order_by('-updated_at')
+    
     rooms_data = []
     for room in rooms:
         if room.room_type == 'group':
@@ -37,12 +48,20 @@ def chat_list(request):
                 display_name = f"{other.last_name} {other.first_name}".strip() or other.username
             else:
                 display_name = 'Неизвестный участник'
-        rooms_data.append({'room': room, 'display_name': display_name})
+        
+        # Добавляем в массив room и unread_count, который мы посчитали в запросе
+        rooms_data.append({
+            'room': room, 
+            'display_name': display_name,
+            'unread_count': room.unread_count
+        })
+        
     is_teacher = request.user.groups.filter(name='Преподаватель').exists()
     base_template = get_base_template(request.user)
     hidden_rooms = []
     if is_teacher:
         hidden_rooms = ChatRoom.objects.filter(deleted_for__isnull=False).exclude(deleted_for=request.user).distinct()
+        
     return render(request, 'chat/chat_list.html', {
         'rooms_data': rooms_data,
         'is_teacher': is_teacher,
@@ -57,6 +76,15 @@ def chat_detail(request, room_id):
     if request.user not in room.participants.all():
         messages.error(request, 'Нет доступа')
         return redirect('chat:chat_list')
+        
+    # --- СБРОС КРАСНОГО КРУЖОЧКА ПРИ ВХОДЕ В ЧАТ ---
+    unread_messages = room.messages.exclude(sender=request.user).exclude(read_by=request.user)
+    if unread_messages.exists():
+        # Добавляем текущего пользователя в список прочитавших для каждого нового сообщения
+        for msg in unread_messages:
+            msg.read_by.add(request.user)
+    # -----------------------------------------------
+
     messages_history = room.messages.all()
     base_template = get_base_template(request.user)
     is_teacher = request.user.groups.filter(name='Преподаватель').exists()
@@ -275,3 +303,9 @@ def upload_attachment(request, room_id):
         )
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'error': 'Bad request'}, status=400)
+
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import ChatRoom # или как называется твоя модель комнаты
+

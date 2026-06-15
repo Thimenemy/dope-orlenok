@@ -16,10 +16,16 @@
         transform: translateX(4px);
         background-color: #f8fafc;
         box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04) !important;
-        border-left-color: #0d6efd; /* Наш фирменный технологичный синий */
     }
+    
+    /* Акцент подсветки карточки непрочитанного чата */
+    .is-unread-chat-card {
+        background-color: #fcfdfe !important;
+        border-left-color: #0d6efd !important;
+    }
+    
     .hidden-chat-card {
-        border-left: 4px solid #ef4444; /* Мягкий красный оттенок для скрытых чатов */
+        border-left: 4px solid #ef4444; 
     }
     .hidden-chat-card:hover {
         border-left-color: #dc2626;
@@ -48,7 +54,6 @@
         font-weight: 600;
     }
 
-    /* Синие и нейтральные пастельные бейджи */
     .badge-group-chat {
         background-color: #eff6ff !important;
         color: #1d4ed8 !important;
@@ -77,7 +82,7 @@
     <div class="row g-3">
         {% for item in rooms_data %}
         <div class="col-12">
-            <div class="card shadow-sm chat-item-card p-3">
+            <div class="card shadow-sm chat-item-card p-3 {% if item.unread_count > 0 %}is-unread-chat-card{% endif %}">
                 <div class="d-flex align-items-center justify-content-between flex-wrap flex-md-nowrap gap-3">
                     
                     <div class="d-flex align-items-center gap-3 flex-grow-1" style="min-width: 0;">
@@ -87,7 +92,9 @@
 
                         <div style="min-width: 0;">
                             <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                <h6 class="fw-bold m-0 text-dark text-truncate" style="max-width: 250px;">{{ item.display_name }}</h6>
+                                <h6 class="m-0 text-dark text-truncate {% if item.unread_count > 0 %}fw-extrabold text-primary{% else %}fw-bold{% endif %}" style="max-width: 250px;">
+                                    {{ item.display_name }}
+                                </h6>
                                 
                                 {% if item.room.room_type == 'group' %}
                                     <span class="badge badge-group-chat chat-type-badge"><i class="fas fa-users me-1"></i> Группа</span>
@@ -98,14 +105,14 @@
                             
                             <p class="text-muted small m-0 text-truncate" style="font-size: 0.875rem;">
                                 {% if item.room.messages.last %}
-                                    <span class="fw-semibold text-secondary">
+                                    <span class="{% if item.unread_count > 0 %}fw-bold text-dark{% else %}fw-semibold text-secondary{% endif %}">
                                         {% if item.room.messages.last.sender.get_full_name %}
                                             {{ item.room.messages.last.sender.get_full_name }}:
                                         {% else %}
                                             {{ item.room.messages.last.sender.username }}:
                                         {% endif %}
                                     </span> 
-                                    <span class="text-dark">{{ item.room.messages.last.content|striptags|default:"📎 Файл" }}</span>
+                                    <span class="{% if item.unread_count > 0 %}text-dark fw-medium{% else %}text-secondary{% endif %}">{{ item.room.messages.last.content|striptags|default:"📎 Файл" }}</span>
                                     <span class="text-muted ms-2" style="font-size: 0.75rem; opacity: 0.8;">
                                         {{ item.room.messages.last.timestamp|date:"H:i d.m" }}
                                     </span>
@@ -116,9 +123,16 @@
                         </div>
                     </div>
 
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                    <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto">
+                        
+                        {% if item.unread_count > 0 %}
+                            <span class="badge bg-danger rounded-pill px-2.5 py-1.5 shadow-sm fw-bold font-monospace" style="font-size: 0.8rem; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);">
+                                +{{ item.unread_count }}
+                            </span>
+                        {% endif %}
+
                         {% if item.room.id %}
-                            <a href="{% url 'chat:chat_detail' item.room.id %}" class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-semibold">
+                            <a href="{% url 'chat:chat_detail' item.room.id %}" class="btn btn-sm {% if item.unread_count > 0 %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 rounded-pill fw-semibold">
                                 <i class="fas fa-folder-open me-1"></i> Открыть
                             </a>
                             {% if is_teacher %}
