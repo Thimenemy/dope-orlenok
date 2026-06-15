@@ -112,7 +112,9 @@
                 <div class="d-flex align-items-center ms-auto">
                     <div class="dropdown">
                         <a class="nav-link dropdown-toggle profile-dropdown-btn d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle fs-4 text-primary"></i>
+                            <span class="profile-avatar-wrapper" id="profile-icon-nav">
+                                <i class="fas fa-user-circle fs-4"></i> <div class="profile-unread-dot"></div>
+                            </span>
                             <span>Привет, {{ user.first_name|default:user.username }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="profileDropdown">

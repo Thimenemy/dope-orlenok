@@ -11,10 +11,11 @@ from teacher.models import Group
 def is_parent(user):
     return user.groups.filter(name='Родитель').exists()
 
+
 @login_required
 @user_passes_test(is_parent)
 def dashboard(request):
-    # Обновляем статусы для заявок, отправленных более 30 минут назад
+    # Автоматическое обновление статусов старых заявок
     now = timezone.now()
     submitted_enrollments = Enrollment.objects.filter(
         user=request.user,
@@ -25,33 +26,77 @@ def dashboard(request):
         enrollment.status = 'under_review'
         enrollment.save()
 
-    # Получаем все заявки текущего пользователя, кроме отклонённых
-    enrollments = Enrollment.objects.filter(user=request.user).exclude(status='rejected').order_by('-created_at')
-    
-    # Для каждой заявки узнаем, какие документы уже загружены (для онлайн-загрузки)
-    for enrollment in enrollments:
-        enrollment.uploaded_docs = {doc.document_type: doc for doc in enrollment.documents.all()}
-    
-    # Список типов документов (для отображения в форме)
-    document_types = EnrollmentDocument.DOCUMENT_TYPES
-
     user = request.user
     profile = user.profile
+ 
     profile_filled = (
         user.first_name and user.last_name and
         profile.birth_date and profile.gender and
         profile.phone and profile.license_accepted and profile.consent_given
     )
+    
     children = user.children.all()
+    
+    # 1. ЗАЯВКИ
     enrollments = Enrollment.objects.filter(user=user).order_by('-created_at')
     for enrollment in enrollments:
         enrollment.uploaded_docs = {doc.document_type: doc for doc in enrollment.documents.all()}
+        enrollment.sort_date = enrollment.updated_at if enrollment.updated_at else enrollment.created_at
+        enrollment.notification_type = 'enrollment'
+        # Генерируем уникальный ключ новизны прямо в Python
+        enrollment.unread_key = f"enrollment-{enrollment.id}-{enrollment.status}"
     
+    document_types = EnrollmentDocument.DOCUMENT_TYPES
+
+    # 2. ЗАЧИСЛЕНИЯ В ГРУППЫ
+    from teacher.models import GroupMember, Schedule
+    from django.utils.timezone import localtime
+    
+    group_memberships = GroupMember.objects.filter(
+        child__parent=user
+    ).select_related('group__course', 'child').order_by('-added_at')
+    
+    for membership in group_memberships:
+        membership.sort_date = localtime(membership.added_at)
+        membership.notification_type = 'group_join'
+        # Ключ новизны для зачислений
+        membership.unread_key = f"group_join-{membership.id}"
+
+    # 3. СБОР ОБНОВЛЕНИЙ РАСПИСАНИЯ (УМНАЯ ГРУППИРОВКА)
+    parent_group_ids = group_memberships.values_list('group_id', flat=True).distinct()
+    three_days_ago = now - timedelta(days=3)
+    
+    raw_schedules = Schedule.objects.filter(
+        group_id__in=parent_group_ids,
+        updated_at__gte=three_days_ago
+    ).select_related('group__course').order_by('-updated_at')
+
+    grouped_schedule_updates = {}
+    for lesson in raw_schedules:
+        local_time = localtime(lesson.updated_at)
+        # Группируем по ID группы и времени (с точностью до минуты).
+        # Сохранение 10 уроков за 1 секунду теперь станет 1 уведомлением!
+        time_key = local_time.strftime('%Y%m%d%H%M') 
+        group_key = f"{lesson.group_id}_{time_key}"
+        
+        if group_key not in grouped_schedule_updates:
+            lesson.sort_date = local_time
+            lesson.notification_type = 'schedule'
+            # Железный уникальный ключ (Группа + Точное время сохранения)
+            lesson.unread_key = f"schedule-batch-{group_key}"
+            grouped_schedule_updates[group_key] = lesson
+
+    schedule_updates = list(grouped_schedule_updates.values())[:10]
+
+    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ХРОНОЛОГИЧЕСКУЮ ЛЕНТУ
+    notifications_feed = list(enrollments) + list(group_memberships) + list(schedule_updates)
+    notifications_feed.sort(key=lambda x: getattr(x, 'sort_date', now), reverse=True)
+
     context = {
         'profile_filled': profile_filled,
         'children': children,
-        'enrollments': enrollments,
         'document_types': document_types,
+        'notifications_feed': notifications_feed,
         'base_template': 'home/base_auth.html',
     }
     return render(request, 'home/dashboard.html', context)

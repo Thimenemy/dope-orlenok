@@ -4,17 +4,19 @@
 
 {% block extra_css %}
 <style>
-    /* Пастельные статусы */
+    /* Пастельные и строгие статусы для документов */
     .status-badge-under_review { background-color: #e0f2fe; color: #0369a1; }
     .status-badge-submitted { background-color: #fef3c7; color: #d97706; }
     .status-badge-awaiting_payment { background-color: #e0e7ff; color: #4f46e5; }
     .status-badge-payment_review { background-color: #f1f5f9; color: #475569; }
     .status-badge-paid { background-color: #d1fae5; color: #065f46; }
+    .status-badge-approved { background-color: #d1fae5; color: #065f46; }
+    .status-badge-rejected { background-color: #fee2e2; color: #991b1b; }
     
     /* Фиксированный левый мини-сайдбар для детей */
     .sticky-child-sidebar {
         position: sticky;
-        top: 0;
+        top: 20px;
         max-height: calc(100vh - 180px);
         overflow-y: auto;
     }
@@ -28,11 +30,11 @@
         transition: all 0.2s ease;
     }
     .child-list-card:hover {
-        border-color: #34d399;
+        border-color: #0d6efd;
         background-color: #f8fafc;
     }
 
-    /* СТИЛИЗАЦИЯ ЗАЯВОК ПОД ЛИНИИ-УВЕДОМЛЕНИЯ */
+    /* СТИЛИЗАЦИЯ ЛЕНТЫ УВЕДОМЛЕНИЙ */
     .enrollment-notification-line {
         background-color: #fff;
         border: 1px solid #e2e8f0;
@@ -41,9 +43,10 @@
         margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
     }
     .enrollment-notification-line:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
         border-color: #cbd5e1;
     }
     
@@ -54,7 +57,7 @@
     }
     .enrollment-notification-line[aria-expanded="true"] .chevron-icon {
         transform: rotate(180deg);
-        color: #059669;
+        color: #1e293b;
     }
 
     /* Внутренний блок подробной информации */
@@ -66,12 +69,67 @@
         margin-top: -14px;
         margin-bottom: 15px;
         padding: 20px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
     }
     .info-sub-block {
         background-color: #f8fafc;
         border: 1px solid #f1f5f9;
         border-radius: 10px;
+    }
+
+    /* СТИЛИ ДЛЯ ИНДИКАТОРА НЕПРОЧИТАННОГО СОСТОЯНИЯ */
+    .unread-marker {
+        width: 8px;
+        height: 8px;
+        background-color: #0d6efd; /* Яркий технологичный синий маркер */
+        border-radius: 50%;
+        position: absolute;
+        left: 6px;
+        top: calc(50% - 4px);
+        display: none; /* Управляется скриптом */
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+    
+    /* Стиль текста для непрочитанной строки */
+    .notification-title-text {
+        transition: font-weight 0.2s ease;
+    }
+    .is-unread-row .notification-title-text {
+        font-weight: 800 !important; /* Делаем заголовок жирным, пока не прочитано */
+    }
+    .is-unread-row {
+        background-color: #f6faff; /* Легкий налет новизны для всей карточки */
+    }
+    /* Красный овал-бейдж для количества уведомлений в заголовке */
+    .notification-count-badge {
+        background-color: #ef4444; /* Насыщенный красный */
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px; /* Эффект овала */
+        margin-left: 8px;
+        display: none; /* Проявляется, только если есть непрочитанные */
+        vertical-align: middle;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Красная точка-индикатор для значка человека (профиля) */
+    .profile-avatar-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .profile-unread-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #ef4444;
+        border: 2px solid #ffffff; /* Белая окантовка, чтобы не сливалось с иконкой */
+        border-radius: 50%;
+        position: absolute;
+        bottom: -2px; /* Снизу справа */
+        right: -2px;
+        display: none; /* Проявляется программно */
+        box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
     }
 </style>
 {% endblock %}
@@ -84,9 +142,9 @@
             <div class="card border-0 shadow-sm p-3 rounded-3 bg-white mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="fw-bold text-dark m-0">
-                        <i class="fas fa-child text-emerald me-1.5" style="color: #059669;"></i>Мои дети
+                        <i class="fas fa-child me-1.5" style="color: #0d6efd;"></i>Мои дети
                     </h6>
-                    <a href="{% url 'accounts:add_child' %}" class="text-success small fw-bold text-decoration-none" title="Добавить ребёнка">
+                    <a href="{% url 'accounts:add_child' %}" class="text-primary small fw-bold text-decoration-none" title="Добавить ребёнка">
                         <i class="fas fa-plus-circle fs-5"></i>
                     </a>
                 </div>
@@ -122,10 +180,7 @@
     </div>
 
     <div class="col-lg-8 col-xl-9">
-        <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
-            <h4 class="fw-bold text-dark m-0">Уведомления по заявкам</h4>
-        </div>
-
+        
         {% if not profile_filled %}
             <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-center justify-content-between p-3 mb-3 small">
                 <div>
@@ -145,149 +200,412 @@
             {% endif %}
         {% endif %}
 
-        {% if enrollments %}
-            {% for enrollment in enrollments %}
+        <div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom flex-wrap gap-2">
+            <h4 class="fw-bold text-dark m-0" style="font-size: 1.25rem;">
+                Лента уведомлений и событий <span class="notification-count-badge" id="header-unread-count">0</span>
+            </h4>
             
-            <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
-                 data-bs-toggle="collapse" 
-                 data-bs-target="#details-{{ enrollment.id }}" 
-                 aria-expanded="false">
-                
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #059669;">
-                        <i class="fas fa-file-invoice"></i>
-                    </div>
-                    <div>
-                        <span class="fw-bold text-dark d-block" style="font-size: 0.95rem;">{{ enrollment.course.name }}</span>
-                        <small class="text-muted" style="font-size: 0.8rem;">Заявка #{{ enrollment.id }} от {{ enrollment.created_at|date:"d.m.Y" }}</small>
-                    </div>
-                </div>
-
-                <div class="ms-md-auto me-2">
-                    <span class="badge status-badge-{{ enrollment.status }} px-3 py-1.5 rounded-pill fw-bold small">
-                        {{ enrollment.get_status_display }}
-                    </span>
-                </div>
-
-                <div>
-                    <i class="fas fa-chevron-down chevron-icon mx-2"></i>
+            <div class="d-flex align-items-center gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm border dropdown-toggle fw-semibold px-3 rounded-pill" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-filter text-secondary me-1.5"></i> <span id="current-filter-label">Все уведомления</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border mt-1" aria-labelledby="filterDropdown" style="border-radius: 12px;">
+                        <li><a class="dropdown-item small fw-medium py-2 active" href="#" onclick="filterTimeline('all', 'Все уведомления', this)"><i class="fas fa-list me-2 opacity-50"></i>Все уведомления</a></li>
+                        <li><a class="dropdown-item small fw-medium py-2" href="#" onclick="filterTimeline('enrollment', 'Только заявки', this)"><i class="fas fa-file-invoice me-2 opacity-50"></i>Только заявки</a></li>
+                        <li><a class="dropdown-item small fw-medium py-2" href="#" onclick="filterTimeline('group_join', 'Только зачисления', this)"><i class="fas fa-user-check me-2 opacity-50"></i>Только зачисления</a></li>
+                        <li><a class="dropdown-item small fw-medium py-2" href="#" onclick="filterTimeline('schedule', 'Только расписание', this)"><i class="fas fa-calendar-alt me-2 opacity-50"></i>Только расписание</a></li>
+                    </ul>
                 </div>
             </div>
+        </div>
 
-            <div class="collapse" id="details-{{ enrollment.id }}">
-                <div class="details-expanded-body rounded-bottom-3 mb-3">
-                    
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <div class="p-3 info-sub-block h-100">
-                                <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
-                                    <i class="fas fa-child me-1.5" style="color: #059669;"></i> Данные ребенка
+        <div class="notifications-timeline-container d-flex flex-column gap-2" id="timeline-feed">
+            {% for item in notifications_feed %}
+                
+                {% if item.notification_type == 'group_join' %}
+                    <div class="timeline-item-block" data-type="group_join" data-unread-id="{{ item.unread_key }}">
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                             style="border-left: 4px solid #0d6efd !important;"
+                             data-bs-toggle="collapse" 
+                             data-bs-target="#group-details-{{ item.id }}" 
+                             aria-expanded="false"
+                             onclick="markAsRead('{{ item.unread_key }}', this)">
+                            
+                            <div class="unread-marker"></div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #0d6efd; background-color: #eff6ff;">
+                                    <i class="fas fa-user-check"></i>
                                 </div>
-                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ enrollment.child_last_name }} {{ enrollment.child_first_name }}</div>
-                                <small class="text-muted">Дата рождения: {{ enrollment.child_birth_date|date:"j E Y" }}</small>
+                                <div>
+                                    <span class="fw-bold text-dark d-block notification-title-text" style="font-size: 0.95rem;">
+                                        {{ item.child.first_name }} зачислен(а) в группу!
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.8rem;">
+                                        Группа: "{{ item.group.name }}" &bull; {{ item.added_at|date:"d.m.Y H:i" }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="ms-md-auto me-2">
+                                <span class="badge px-3 py-1.5 rounded-pill fw-bold small" style="background-color: #e0f2fe; color: #0369a1;">
+                                    Обучение активировано
+                                </span>
+                            </div>
+
+                            <div>
+                                <i class="fas fa-chevron-down chevron-icon mx-2"></i>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="p-3 info-sub-block h-100">
-                                <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
-                                    <i class="fas fa-user-shield me-1.5" style="color: #059669;"></i> Заявитель (Родитель)
-                                </div>
-                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }}</div>
-                                <small class="text-muted d-block"><i class="fas fa-phone-alt me-1"></i> {{ enrollment.user.profile.phone|default:"—" }}</small>
-                            </div>
-                        </div>
-                    </div>
 
-                    {% if enrollment.additional_info %}
-                    <div class="p-2.5 info-sub-block mb-3 small text-dark px-3">
-                        <strong>Примечание:</strong> {{ enrollment.additional_info }}
-                    </div>
-                    {% endif %}
-
-                    {% with docs=enrollment.documents.all %}
-                        {% if docs %}
-                        <div class="mb-3">
-                            <div class="text-secondary small fw-bold text-uppercase tracking-wider mb-1.5" style="font-size: 0.725rem;">Прикрепленные файлы:</div>
-                            <div class="row g-2">
-                                {% for doc in docs %}
-                                <div class="col-md-4 col-sm-6">
-                                    <div class="border rounded-3 p-2 px-3 d-flex justify-content-between align-items-center bg-white shadow-sm" style="font-size: 0.8rem;">
-                                        <span class="text-truncate text-dark fw-medium" style="max-width: 130px;">
-                                            <i class="fas {% if 'pdf' in doc.file.name %}fa-file-pdf text-danger{% else %}fa-file-image text-primary{% endif %} me-1.5"></i>
-                                            {{ doc.get_document_type_display }}
-                                        </span>
-                                        <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle text-primary p-1"><i class="fas fa-external-link-alt"></i></a>
+                        <div class="collapse" id="group-details-{{ item.id }}">
+                            <div class="details-expanded-body rounded-bottom-3 mb-3">
+                                <div class="p-3 info-sub-block">
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">
+                                        <i class="fas fa-graduation-cap me-1.5 text-primary"></i>Информация об учебном процессе
+                                    </h6>
+                                    <div class="row g-2 small text-secondary mt-1">
+                                        <div class="col-sm-4"><strong>Название курса:</strong></div>
+                                        <div class="col-sm-8 text-dark">{{ item.group.course.name }}</div>
+                                        
+                                        <div class="col-sm-4"><strong>Период обучения:</strong></div>
+                                        <div class="col-sm-8 text-dark">С {{ item.group.start_date|date:"d.m.Y" }} по {{ item.group.end_date|date:"d.m.Y" }}</div>
+                                        
+                                        <div class="col-sm-4"><strong>Преподаватель:</strong></div>
+                                        <div class="col-sm-8 text-dark">{{ item.group.teacher.get_full_name|default:item.group.teacher.username }}</div>
+                                    </div>
+                                    <div class="mt-3 pt-2 border-top d-flex gap-2">
+                                        <a href="{% url 'home:group_schedule_page' item.group.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            <i class="far fa-calendar-alt me-1"></i> Расписание занятий
+                                        </a>
+                                        <a href="{% url 'chat:chat_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 text-secondary">
+                                            <i class="far fa-comments me-1"></i> Перейти в чаты
+                                        </a>
                                     </div>
                                 </div>
-                                {% endfor %}
                             </div>
                         </div>
-                        {% endif %}
-                    {% endwith %}
-
-                    {% if enrollment.status == 'under_review' %}
-                    <div class="alert alert-info border-0 m-0 p-2.5 rounded-3 small">
-                        <i class="fas fa-info-circle me-1"></i>Заявка находится на верификации у модераторов центра. Скрининг документов.
                     </div>
 
-                    {% elif enrollment.status == 'submitted' %}
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light p-2.5 rounded-3 border small">
-                        <span class="text-muted"><i class="fas fa-history me-1"></i>Ожидание обработки (Фиксация: {{ enrollment.submitted_at|date:"H:i d.m" }})</span>
-                        <div class="d-flex gap-2">
-                            <form method="post" action="{% url 'enrollment:delete_enrollment' enrollment.id %}" onsubmit="return confirm('Удалить заявку?');" class="m-0">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Удалить</button>
-                            </form>
-                            <form method="post" action="{% url 'enrollment:rework_enrollment' enrollment.id %}" onsubmit="return confirm('Отозвать заявку?');" class="m-0">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-xs btn-outline-warning py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Отозвать</button>
-                            </form>
+                {% elif item.notification_type == 'schedule' %}
+                    <div class="timeline-item-block" data-type="schedule" data-unread-id="{{ item.unread_key }}">
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                             style="border-left: 4px solid #ffc107 !important;"
+                             data-bs-toggle="collapse" 
+                             data-bs-target="#sched-details-{{ item.unread_key }}" 
+                             aria-expanded="false"
+                             onclick="markAsRead('{{ item.unread_key }}', this)">
+                            
+                            <div class="unread-marker"></div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #b45309; background-color: #fffbeb;">
+                                    <i class="far fa-calendar-plus"></i>
+                                </div>
+                                <div>
+                                    <span class="fw-bold text-dark d-block notification-title-text" style="font-size: 0.95rem;">
+                                        Изменение расписания группы "{{ item.group.name }}"
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.8rem;">
+                                        Обновлено: {{ item.sort_date|date:"H:i d.m" }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="ms-md-auto me-2">
+                                <span class="badge px-3 py-1.5 rounded-pill fw-bold small" style="background-color: #fffbeb; color: #b45309;">
+                                    План изменён
+                                </span>
+                            </div>
+
+                            <div>
+                                <i class="fas fa-chevron-down chevron-icon mx-2"></i>
+                            </div>
+                        </div>
+
+                        <div class="collapse" id="sched-details-{{ item.unread_key }}">
+                            <div class="details-expanded-body rounded-bottom-3 mb-3">
+                                <div class="p-3 info-sub-block">
+                                    <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">
+                                        <i class="fas fa-clipboard-list me-1.5" style="color: #ffc107;"></i>Внесены правки в календарь
+                                    </h6>
+                                    <p class="small text-secondary mt-1 mb-2">Преподаватель обновил данные занятий этой группы. Пожалуйста, проверьте расписание, чтобы не пропустить изменения во времени уроков или номерах кабинетов.</p>
+                                    <div class="mt-3 pt-2 border-top">
+                                        <a href="{% url 'home:group_schedule_page' item.group.id %}" class="btn btn-sm btn-warning rounded-pill px-4 text-dark fw-semibold" style="background-color: #ffc107; border-color: #ffc107;">
+                                            <i class="far fa-calendar-alt me-1"></i> Открыть полный календарь
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {% elif enrollment.status == 'awaiting_payment' %}
-                    <div class="p-3 border rounded-3 bg-white shadow-sm">
-                        <div class="alert alert-success border-0 py-1.5 px-3 small rounded-3 mb-2.5">Заявка одобрена! Требуется оплата.</div>
-                        <pre class="bg-light p-2 rounded text-dark small mb-2" style="font-family: inherit; white-space: pre-wrap; font-size: 0.8rem;">{{ enrollment.payment_details }}</pre>
-                        <div class="fw-bold text-dark small mb-3">Сумма к оплате: <span class="text-success fs-5">{{ enrollment.price }}</span> руб.</div>
-                        
-                        <form method="post" action="{% url 'enrollment:upload_receipt' enrollment.id %}" enctype="multipart/form-data" class="m-0 border-top pt-2">
-                            {% csrf_token %}
-                            <label class="form-label small text-muted fw-bold">Прикрепить чек / квитанцию</label>
-                            <div class="d-flex gap-2">
-                                <input type="file" name="receipt" class="form-control form-control-sm" required style="border-radius: 8px;">
-                                <button type="submit" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold flex-shrink-0">Отправить чек</button>
+                {% elif item.notification_type == 'enrollment' %}
+                    <div class="timeline-item-block" data-type="enrollment" data-unread-id="{{ item.unread_key }}">
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                             data-bs-toggle="collapse" 
+                             data-bs-target="#details-{{ item.id }}" 
+                             aria-expanded="false"
+                             style="{% if item.status == 'submitted' %}border-left: 4px solid #64748b !important;{% elif item.status == 'under_review' %}border-left: 4px solid #0369a1 !important;{% elif item.status == 'awaiting_payment' %}border-left: 4px solid #4f46e5 !important;{% elif item.status == 'payment_review' %}border-left: 4px solid #475569 !important;{% elif item.status == 'paid' or item.status == 'approved' %}border-left: 4px solid #065f46 !important;{% elif item.status == 'rejected' %}border-left: 4px solid #991b1b !important;{% endif %}"
+                             onclick="markAsRead('{{ item.unread_key }}', this)">
+                            
+                            <div class="unread-marker"></div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #1e293b;">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <div>
+                                    <span class="fw-bold text-dark d-block notification-title-text" style="font-size: 0.95rem;">{{ item.course.name }}</span>
+                                    <small class="text-muted" style="font-size: 0.8rem;">Заявка #{{ item.id }} от {{ item.created_at|date:"d.m.Y" }}</small>
+                                </div>
                             </div>
-                        </form>
+
+                            <div class="ms-md-auto me-2">
+                                <span class="badge status-badge-{{ item.status }} px-3 py-1.5 rounded-pill fw-bold small">
+                                    {{ item.get_status_display }}
+                                </span>
+                            </div>
+
+                            <div>
+                                <i class="fas fa-chevron-down chevron-icon mx-2"></i>
+                            </div>
+                        </div>
+
+                        <div class="collapse" id="details-{{ item.id }}">
+                            <div class="details-expanded-body rounded-bottom-3 mb-3">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 info-sub-block h-100">
+                                            <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
+                                                <i class="fas fa-child me-1.5" style="color: #0d6efd;"></i> Данные ребенка
+                                            </div>
+                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ item.child_last_name }} {{ item.child_first_name }}</div>
+                                            <small class="text-muted">Дата рождения: {{ item.child_birth_date|date:"j E Y" }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 info-sub-block h-100">
+                                            <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
+                                                <i class="fas fa-user-shield me-1.5" style="color: #0d6efd;"></i> Заявитель (Родитель)
+                                            </div>
+                                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ item.parent_last_name }} {{ item.parent_first_name }}</div>
+                                            <small class="text-muted d-block"><i class="fas fa-phone-alt me-1"></i> {{ item.user.profile.phone|default:"—" }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if item.additional_info %}
+                                <div class="p-2.5 info-sub-block mb-3 small text-dark px-3">
+                                    <strong>Примечание:</strong> {{ item.additional_info }}
+                                </div>
+                                {% endif %}
+
+                                {% with docs=item.documents.all %}
+                                    {% if docs %}
+                                    <div class="mb-3">
+                                        <div class="text-secondary small fw-bold text-uppercase tracking-wider mb-1.5" style="font-size: 0.725rem;">Прикрепленные файлы:</div>
+                                        <div class="row g-2">
+                                            {% for doc in docs %}
+                                            <div class="col-md-4 col-sm-6">
+                                                <div class="border rounded-3 p-2 px-3 d-flex justify-content-between align-items-center bg-white shadow-sm" style="font-size: 0.8rem;">
+                                                    <span class="text-truncate text-dark fw-medium" style="max-width: 130px;">
+                                                        <i class="fas {% if 'pdf' in doc.file.name %}fa-file-pdf text-danger{% else %}fa-file-image text-primary{% endif %} me-1.5"></i>
+                                                        {{ doc.get_document_type_display }}
+                                                    </span>
+                                                    <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle text-primary p-1"><i class="fas fa-external-link-alt"></i></a>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endwith %}
+
+                                {% if item.status == 'under_review' %}
+                                <div class="alert alert-info border-0 m-0 p-2.5 rounded-3 small">
+                                    <i class="fas fa-info-circle me-1"></i>Заявка находится на верификации у модераторов центра. Скрининг документов.
+                                </div>
+
+                                {% elif item.status == 'submitted' %}
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light p-2.5 rounded-3 border small">
+                                    <span class="text-muted"><i class="fas fa-history me-1"></i>Ожидание обработки (Фиксация: {{ item.submitted_at|date:"H:i d.m" }})</span>
+                                    <div class="d-flex gap-2">
+                                        <form method="post" action="{% url 'enrollment:delete_enrollment' item.id %}" onsubmit="return confirm('Удалить заявку?');" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Удалить</button>
+                                        </form>
+                                        <form method="post" action="{% url 'enrollment:rework_enrollment' item.id %}" onsubmit="return confirm('Отозвать заявку?');" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-xs btn-outline-warning py-1 px-2.5 rounded-pill" style="font-size: 0.8rem;">Отозвать</button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {% elif item.status == 'awaiting_payment' %}
+                                <div class="p-3 border rounded-3 bg-white shadow-sm">
+                                    <div class="alert alert-success border-0 py-1.5 px-3 small rounded-3 mb-2.5">Заявка одобрена! Требуется оплата.</div>
+                                    <pre class="bg-light p-2 rounded text-dark small mb-2" style="font-family: inherit; white-space: pre-wrap; font-size: 0.8rem;">{{ item.payment_details }}</pre>
+                                    <div class="fw-bold text-dark small mb-3">Сумма к оплате: <span class="text-success fs-5">{{ item.price }}</span> руб.</div>
+                                    
+                                    <form method="post" action="{% url 'enrollment:upload_receipt' item.id %}" enctype="multipart/form-data" class="m-0 border-top pt-2">
+                                        {% csrf_token %}
+                                        <label class="form-label small text-muted fw-bold">Прикрепить чек / квитанцию</label>
+                                        <div class="d-flex gap-2">
+                                            <input type="file" name="receipt" class="form-control form-control-sm" required style="border-radius: 8px;">
+                                            <button type="submit" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold flex-shrink-0">Отправить чек</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                {% elif item.status == 'payment_review' %}
+                                <div class="alert alert-secondary border-0 m-0 p-2.5 rounded-3 small text-dark d-flex align-items-center gap-2">
+                                    <i class="fas fa-spinner fa-spin text-secondary"></i>
+                                    <span>Чек загружен и проверяется бухгалтерией банка. Ожидайте смены статуса.</span>
+                                </div>    
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
+                {% endif %}
 
-                    {% elif enrollment.status == 'payment_review' %}
-                    <div class="alert alert-secondary border-0 m-0 p-2.5 rounded-3 small text-dark d-flex align-items-center gap-2">
-                        <i class="fas fa-spinner fa-spin text-secondary"></i>
-                        <span>Чек загружен и проверяется бухгалтерией банка. Ожидайте смены статуса.</span>
-                    </div>    
-                    {% endif %}
-
+            {% empty %}
+                <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed mt-2" id="empty-timeline-alert">
+                    <i class="far fa-folder-open text-muted fa-3x mb-3"></i>
+                    <h5 class="text-secondary fw-bold">Активных уведомлений пока нет</h5>
+                    <p class="text-muted small m-0">Здесь будут отображаться статусы заявок, зачисления на курсы и изменения расписания.</p>
                 </div>
-            </div>
             {% endfor %}
-            
-            <div class="text-center py-3">
+        </div>
+
+        {% if notifications_feed %}
+            <div class="text-center py-4">
                 <a href="{% url 'main:course_list' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-semibold">
                     <i class="fas fa-plus-circle me-1"></i> Записаться на новый курс
                 </a>
             </div>
-        {% else %}
-            <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed mt-2">
-                <i class="far fa-folder-open text-muted fa-3x mb-3"></i>
-                <h5 class="text-secondary fw-bold">Активных заявок пока нет</h5>
-                {% if profile_filled and children %}
-                    <a href="{% url 'main:course_list' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-semibold mt-2">
-                        <i class="fas fa-book-open me-1"></i> Выбрать курс в каталоге
-                    </a>
-                {% endif %}
-            </div>
         {% endif %}
+
     </div>
 </div>
+
+<script>
+    // Функция пересчета и обновления красных бейджей количества
+    function updateUnreadBadges() {
+        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
+        const items = document.querySelectorAll('.timeline-item-block');
+        let unreadCount = 0;
+
+        // Считаем только те блоки, чьих ID нет в списке прочитанных
+        items.forEach(item => {
+            const unreadId = item.getAttribute('data-unread-id');
+            if (unreadId && !readNotifications.includes(unreadId)) {
+                unreadCount++;
+            }
+        });
+
+        // 1. Обновляем овал-бейдж в заголовке ленты
+        const headerBadge = document.getElementById('header-unread-count');
+        if (headerBadge) {
+            if (unreadCount > 0) {
+                headerBadge.innerText = unreadCount;
+                headerBadge.style.display = 'inline-block';
+            } else {
+                headerBadge.style.display = 'none';
+            }
+        }
+
+        // 2. Обновляем точку снизу справа на значке человека (в шапке)
+        const profileWrapper = document.getElementById('profile-icon-nav');
+        if (profileWrapper) {
+            const dot = profileWrapper.querySelector('.profile-unread-dot');
+            if (dot) {
+                if (unreadCount > 0) {
+                    dot.style.display = 'block';
+                } else {
+                    dot.style.display = 'none';
+                }
+            }
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    document.addEventListener("DOMContentLoaded", function() {
+        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
+        const items = document.querySelectorAll('.timeline-item-block');
+        
+        items.forEach(item => {
+            const unreadId = item.getAttribute('data-unread-id');
+            const lineRow = item.querySelector('.enrollment-notification-line');
+            const marker = item.querySelector('.unread-marker');
+
+            if (unreadId && lineRow && marker) {
+                if (!readNotifications.includes(unreadId)) {
+                    lineRow.classList.add('is-unread-row');
+                    marker.style.display = 'block';
+                }
+            }
+        });
+
+        // Запускаем подсчет бейджей
+        updateUnreadBadges();
+    });
+
+    // Функция гасит статус при клике и пересчитывает счетчики
+    function markAsRead(unreadId, rowElement) {
+        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
+        
+        if (!readNotifications.includes(unreadId)) {
+            readNotifications.push(unreadId);
+            localStorage.setItem('read_notifications', JSON.stringify(readNotifications));
+            
+            rowElement.classList.remove('is-unread-row');
+            const marker = rowElement.querySelector('.unread-marker');
+            if (marker) {
+                marker.style.display = 'none';
+            }
+            
+            // СРАЗУ ПЕРЕСЧИТЫВАЕМ БЕЙДЖИ, чтобы цифры обновились без перезагрузки
+            updateUnreadBadges();
+        }
+    }
+
+    // Фильтрация таб-меню (твоя оригинальная функция)
+    function filterTimeline(type, labelText, element) {
+        document.getElementById('current-filter-label').innerText = labelText;
+        const dropdownItems = document.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => item.classList.remove('active'));
+        if (element) {
+            element.classList.add('active');
+        }
+
+        const blocks = document.querySelectorAll('.timeline-item-block');
+        let visibleCount = 0;
+
+        blocks.forEach(block => {
+            const blockType = block.getAttribute('data-type');
+            if (type === 'all' || blockType === type) {
+                block.style.display = 'block';
+                visibleCount++;
+            } else {
+                const collapses = block.querySelectorAll('.collapse.show');
+                collapses.forEach(c => {
+                    const bsCollapse = bootstrap.Collapse.getInstance(c);
+                    if (bsCollapse) bsCollapse.hide();
+                });
+                block.style.display = 'none';
+            }
+        });
+
+        const emptyAlert = document.getElementById('empty-timeline-alert');
+        if (emptyAlert) {
+            if (visibleCount === 0 && blocks.length > 0) {
+                emptyAlert.style.display = 'block';
+            } else if (blocks.length > 0) {
+                emptyAlert.style.display = 'none';
+            }
+        }
+    }
+</script>
 {% endblock %}
