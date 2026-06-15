@@ -17,5 +17,7 @@ urlpatterns = [
     path("save_all_changes/<int:pk>/", views.save_all_changes, name="save_all_changes"),
    path('group/<int:pk>/chat/', views.group_chat_redirect, name='group_chat_redirect'),
    path('group/<int:group_id>/create_group_chat/', views.create_group_chat_for_group, name='create_group_chat_for_group'),
+   path('group/<int:group_id>/complete/', views.complete_course, name='complete_course'),
+   path('reports/', views.reports_list, name='reports_list'),
    
 ]

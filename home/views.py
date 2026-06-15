@@ -43,13 +43,12 @@ def dashboard(request):
         enrollment.uploaded_docs = {doc.document_type: doc for doc in enrollment.documents.all()}
         enrollment.sort_date = enrollment.updated_at if enrollment.updated_at else enrollment.created_at
         enrollment.notification_type = 'enrollment'
-        # Генерируем уникальный ключ новизны прямо в Python
         enrollment.unread_key = f"enrollment-{enrollment.id}-{enrollment.status}"
     
     document_types = EnrollmentDocument.DOCUMENT_TYPES
 
     # 2. ЗАЧИСЛЕНИЯ В ГРУППЫ
-    from teacher.models import GroupMember, Schedule
+    from teacher.models import GroupMember, Schedule, StudentCourseReport
     from django.utils.timezone import localtime
     
     group_memberships = GroupMember.objects.filter(
@@ -59,10 +58,9 @@ def dashboard(request):
     for membership in group_memberships:
         membership.sort_date = localtime(membership.added_at)
         membership.notification_type = 'group_join'
-        # Ключ новизны для зачислений
         membership.unread_key = f"group_join-{membership.id}"
 
-    # 3. СБОР ОБНОВЛЕНИЙ РАСПИСАНИЯ (УМНАЯ ГРУППИРОВКА)
+    # 3. СБОР ОБНОВЛЕНИЙ РАСПИСАНИЯ
     parent_group_ids = group_memberships.values_list('group_id', flat=True).distinct()
     three_days_ago = now - timedelta(days=3)
     
@@ -74,22 +72,31 @@ def dashboard(request):
     grouped_schedule_updates = {}
     for lesson in raw_schedules:
         local_time = localtime(lesson.updated_at)
-        # Группируем по ID группы и времени (с точностью до минуты).
-        # Сохранение 10 уроков за 1 секунду теперь станет 1 уведомлением!
         time_key = local_time.strftime('%Y%m%d%H%M') 
         group_key = f"{lesson.group_id}_{time_key}"
         
         if group_key not in grouped_schedule_updates:
             lesson.sort_date = local_time
             lesson.notification_type = 'schedule'
-            # Железный уникальный ключ (Группа + Точное время сохранения)
             lesson.unread_key = f"schedule-batch-{group_key}"
             grouped_schedule_updates[group_key] = lesson
 
     schedule_updates = list(grouped_schedule_updates.values())[:10]
 
-    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ХРОНОЛОГИЧЕСКУЮ ЛЕНТУ
-    notifications_feed = list(enrollments) + list(group_memberships) + list(schedule_updates)
+    # --- НАШЕ НОВОЕ РЕШЕНИЕ БЕЗ LOG-ТАБЛИЦ: СОБИРАЕМ ОТЧЁТЫ ОБ УСПЕВАЕМОСТИ ---
+    child_ids = children.values_list('id', flat=True)
+    course_reports = StudentCourseReport.objects.filter(
+        student_id__in=child_ids
+    ).select_related('group__course', 'student').order_by('-generated_at')
+
+    for report in course_reports:
+        report.sort_date = localtime(report.generated_at)
+        report.notification_type = 'course_report'
+        # Железный ключ новизны для локалстораджа фронтенда
+        report.unread_key = f"course_report-{report.id}"
+
+    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ХРОНОЛОГИЧЕСКУЮ ЛЕНТУ (Включая отчеты)
+    notifications_feed = list(enrollments) + list(group_memberships) + list(schedule_updates) + list(course_reports)
     notifications_feed.sort(key=lambda x: getattr(x, 'sort_date', now), reverse=True)
 
     context = {
@@ -218,3 +225,41 @@ def parent_journal(request):
         'journal_entries': journal_entries,
     }
     return render(request, 'home/parent_journal.html', context)
+
+
+@login_required
+def view_report_print(request, report_id):
+    from teacher.models import StudentCourseReport
+    report = get_object_or_404(StudentCourseReport, id=report_id)
+    
+    # Проверка безопасности: смотреть отчёт может препод или только родитель этого ребёнка
+    is_teacher = request.user.groups.filter(name='Преподаватель').exists()
+    if not is_teacher and report.student.parent != request.user:
+        return render(request, 'home/access_denied.html') # Страница ошибки доступа
+        
+    return render(request, 'home/report_print_page.html', {
+        'report': report,
+        'base_template': 'teacher/base_teacher.html' if is_teacher else 'home/base_auth.html'
+    })
+
+@login_required
+def view_report_print(request, report_id):
+    from teacher.models import StudentCourseReport, JournalEntry
+    report = get_object_or_404(StudentCourseReport, id=report_id)
+    
+    # Проверка прав доступа
+    is_teacher = request.user.groups.filter(name='Преподаватель').exists()
+    if not is_teacher and report.student.parent != request.user:
+        return render(request, 'home/access_denied.html')
+        
+    # --- НАШЕ ДОПОЛНЕНИЕ: ВЫТАСКИВАЕМ ИСТОРИЮ ПОСЕЩЕНИЙ И ОЦЕНОК ---
+    lessons_history = JournalEntry.objects.filter(
+        student=report.student,
+        schedule__group=report.group
+    ).select_related('schedule').order_by('schedule__date')
+        
+    return render(request, 'home/report_print_page.html', {
+        'report': report,
+        'lessons_history': lessons_history, # Передаём историю уроков в шаблон
+        'base_template': 'teacher/base_teacher.html' if is_teacher else 'home/base_auth.html'
+    })

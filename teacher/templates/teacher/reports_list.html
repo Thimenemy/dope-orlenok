@@ -1,0 +1,134 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block title %}Архив отчётов успеваемости{% endblock %}
+
+{% block content %}
+<div class="container py-2" style="max-width: 1100px;">
+    
+    <div class="pb-2 mb-4 border-bottom">
+        <h1 class="h3 fw-bold text-dark m-0">Архив итоговых отчётов</h1>
+        <p class="text-muted small mb-0">Сводная ведомость успеваемости студентов по завершённым и текущим курсам</p>
+    </div>
+
+    <!-- ПАНЕЛЬ ФИЛЬТРОВ И СОРТИРОВКИ -->
+    <div class="card border-0 shadow-sm rounded-3 bg-white mb-4">
+        <div class="card-body p-4">
+            <form method="get" action="{% url 'teacher:reports_list' %}" class="row g-3 align-items-end">
+                
+                <div class="col-lg-3 col-md-4">
+                    <label class="form-label text-secondary small fw-semibold mb-1"><i class="fas fa-search me-1"></i>Фамилия студента</label>
+                    <input type="text" name="student_name" class="form-control form-control-sm" placeholder="Введите фамилию..." value="{{ request.GET.student_name }}">
+                </div>
+                
+                <div class="col-lg-2 col-md-4">
+                    <label class="form-label text-secondary small fw-semibold mb-1">Учебный курс</label>
+                    <select name="course_id" class="form-select form-select-sm">
+                        <option value="">Все курсы</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}" {% if request.GET.course_id == course.id|stringformat:"s" %}selected{% endif %}>{{ course.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-lg-2 col-md-4">
+                    <label class="form-label text-secondary small fw-semibold mb-1">Группа</label>
+                    <select name="group_id" class="form-select form-select-sm">
+                        <option value="">Все группы</option>
+                        {% for g in groups %}
+                            <option value="{{ g.id }}" {% if request.GET.group_id == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label text-secondary small fw-semibold mb-1">Статус освоения</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">Любой результат</option>
+                        <option value="Отличное" {% if request.GET.status == 'Отличное' %}selected{% endif %}>Отличное (Продвинутый)</option>
+                        <option value="Хорошее" {% if request.GET.status == 'Хорошее' %}selected{% endif %}>Хорошее (Базовый)</option>
+                        <option value="Удовлетворительное" {% if request.GET.status == 'Удовлетворительное' %}selected{% endif %}>Удовлетворительное</option>
+                        <option value="Курс прослушан" {% if request.GET.status == 'Курс прослушан' %}selected{% endif %}>Прослушан (Повторение)</option>
+                    </select>
+                </div>
+                
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label text-secondary small fw-semibold mb-1">Сортировка</label>
+                    <select name="sort_by" class="form-select form-select-sm">
+                        <option value="date_desc" {% if request.GET.sort_by == 'date_desc' or not request.GET.sort_by %}selected{% endif %}>Сначала новые</option>
+                        <option value="date_asc" {% if request.GET.sort_by == 'date_asc' %}selected{% endif %}>Сначала старые</option>
+                        <option value="score_desc" {% if request.GET.sort_by == 'score_desc' %}selected{% endif %}>Высший балл ⬇</option>
+                        <option value="score_asc" {% if request.GET.sort_by == 'score_asc' %}selected{% endif %}>Низший балл ⬆</option>
+                    </select>
+                </div>
+                
+                <div class="col-12 mt-3 d-flex justify-content-end gap-2 border-top pt-3">
+                    <a href="{% url 'teacher:reports_list' %}" class="btn btn-sm btn-light rounded-pill px-4 fw-medium text-secondary">Сбросить</a>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm fw-semibold">
+                        <i class="fas fa-filter me-1"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ТАБЛИЦА РЕЗУЛЬТАТОВ -->
+    <div class="card border-0 shadow-sm rounded-3 bg-white">
+        <div class="card-body p-0">
+            {% if reports %}
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Студент</th>
+                            <th>Учебный курс / Группа</th>
+                            <th class="text-center">Посещаемость</th>
+                            <th class="text-center">Средний балл</th>
+                            <th>Статус освоения</th>
+                            <th class="text-end pe-4">Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reports %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ r.student.last_name }} {{ r.student.first_name }}</div>
+                                <small class="text-muted">Дата выдачи: {{ r.generated_at|date:"d.m.Y" }}</small>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-secondary">{{ r.group.course.name }}</div>
+                                <small class="text-muted">Группа: "{{ r.group.name }}"</small>
+                            </td>
+                            <td class="text-center fw-medium text-dark">
+                                {{ r.attended_lessons }} / {{ r.total_lessons }}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary-subtle text-primary fw-bold fs-6 px-2.5 py-1 rounded">
+                                    {{ r.average_score|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="small fw-semibold {% if r.average_score >= 4.5 %}text-success{% elif r.average_score >= 3.5 %}text-primary{% elif r.average_score >= 2.5 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ r.knowledge_level }}
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'home:view_report_print' r.id %}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold">
+                                    <i class="fas fa-print me-1"></i> Открыть PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="text-muted mb-3"><i class="fas fa-search fa-3x"></i></div>
+                <h5 class="text-secondary fw-bold">Ничего не найдено</h5>
+                <p class="text-muted small m-0">По вашему запросу отчётов не найдено, либо вы еще не завершали курсы.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

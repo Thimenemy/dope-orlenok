@@ -1,194 +1,340 @@
 {% extends "accountant/base_accountant.html" %}
 
-{% block title %}Заявка #{{ enrollment.id }}{% endblock %}
+{% block title %}Заявка #{{ enrollment.id }} | Обработка{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Мягкие тени и скругления для карточек */
+    .dashboard-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .card-header-custom {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Стили для текстовых блоков слева */
+    .data-group {
+        margin-bottom: 1.25rem;
+    }
+    .data-group:last-child {
+        margin-bottom: 0;
+    }
+    .data-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .data-value {
+        font-size: 0.95rem;
+        color: #0f172a;
+        font-weight: 500;
+        line-height: 1.4;
+    }
+
+    /* Баджи статусов */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.4rem 1.2rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .bg-status-review { background-color: #e0f2fe; color: #0369a1; }
+    .bg-status-payment { background-color: #fef3c7; color: #d97706; }
+    .bg-status-wait { background-color: #e0e7ff; color: #4f46e5; }
+    .bg-status-success { background-color: #d1fae5; color: #065f46; }
+    .bg-status-error { background-color: #fee2e2; color: #991b1b; }
+
+    /* Документы и чеки */
+    .doc-box {
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        background-color: #f8fafc;
+        transition: 0.2s;
+    }
+    .doc-box:hover {
+        border-color: #059669;
+        background-color: #ffffff;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05);
+    }
+    
+    /* Форма */
+    .custom-textarea {
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        padding: 1rem;
+        background-color: #f8fafc;
+    }
+    .custom-textarea:focus {
+        background-color: #ffffff;
+        border-color: #059669;
+        box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+        outline: none;
+    }
+    .action-btn {
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <!-- Кнопка назад -->
-    <div class="mb-3">
-        <a href="{% url 'accountant:enrollment_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-arrow-left"></i> Назад к списку
+<div class="container-fluid py-2">
+    
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <a href="{% url 'accountant:enrollment_list' %}" class="text-secondary text-decoration-none fw-medium hover-primary">
+            <i class="fas fa-arrow-left me-2"></i> Вернуться к списку
         </a>
+        <div class="status-pill 
+            {% if enrollment.status == 'under_review' %}bg-status-review
+            {% elif enrollment.status == 'payment_review' %}bg-status-payment
+            {% elif enrollment.status == 'awaiting_payment' %}bg-status-wait
+            {% elif enrollment.status == 'paid' %}bg-status-success
+            {% elif enrollment.status == 'rejected' %}bg-status-error
+            {% else %}bg-secondary text-white{% endif %}">
+            {{ enrollment.get_status_display }}
+        </div>
     </div>
 
-    <!-- Одна большая карточка заявки -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white border-bottom-0 pt-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3 class="mb-0">Заявка №{{ enrollment.id }}</h3>
-                <span class="badge 
-                    {% if enrollment.status == 'under_review' %}bg-info
-                    {% elif enrollment.status == 'payment_review' %}bg-warning text-dark
-                    {% elif enrollment.status == 'approved' %}bg-success
-                    {% else %}bg-secondary{% endif %} px-3 py-2">
-                    <i class="fas fa-tag"></i> {{ enrollment.get_status_display }}
-                </span>
+    <div class="row g-4">
+        
+        <div class="col-xl-4 col-lg-5">
+            
+            <div class="dashboard-card">
+                <div class="card-header-custom">
+                    <i class="fas fa-hashtag text-primary"></i> Заявка №{{ enrollment.id }}
+                </div>
+                <div class="p-4">
+                    <div class="data-group">
+                        <div class="data-label">Выбранный курс</div>
+                        <div class="data-value text-primary fw-bold fs-6">{{ enrollment.course.name }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Дата поступления</div>
+                        <div class="data-value">{{ enrollment.submitted_at|date:"d.m.Y в H:i"|default:"Еще не отправлена" }}</div>
+                    </div>
+                </div>
             </div>
-            <p class="text-muted small mt-2 mb-0">
-                <i class="fas fa-calendar-alt"></i> Создана: {{ enrollment.created_at|date:"d.m.Y H:i" }}
-                {% if enrollment.submitted_at %}
-                    | <i class="fas fa-paper-plane"></i> Отправлена: {{ enrollment.submitted_at|date:"d.m.Y H:i" }}
-                {% endif %}
-            </p>
+
+            <div class="dashboard-card">
+                <div class="card-header-custom">
+                    <i class="fas fa-child text-success"></i> Ребёнок
+                </div>
+                <div class="p-4">
+                    <div class="data-group">
+                        <div class="data-label">Фамилия Имя Отчество</div>
+                        <div class="data-value">{{ enrollment.child_last_name }} {{ enrollment.child_first_name }} {{ enrollment.child_middle_name|default:"" }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Дата рождения</div>
+                        <div class="data-value">{{ enrollment.child_birth_date|date:"d.m.Y" }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Примечание родителя</div>
+                        <div class="data-value text-muted" style="font-size: 0.9rem;">{{ enrollment.additional_info|default:"Особых примечаний нет." }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-header-custom">
+                    <i class="fas fa-user-tie text-info"></i> Родитель
+                </div>
+                <div class="p-4">
+                    <div class="data-group">
+                        <div class="data-label">ФИО родителя</div>
+                        <div class="data-value">{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }} {{ enrollment.parent_middle_name|default:"" }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Дата рождения</div>
+                        <div class="data-value">{{ enrollment.user.profile.birth_date|date:"d.m.Y"|default:"Не указана" }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Мобильный телефон</div>
+                        <div class="data-value">{{ enrollment.user.profile.phone|default:"Не указан" }}</div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-label">Электронная почта</div>
+                        <div class="data-value font-monospace text-primary">{{ enrollment.user.email }}</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <div class="card-body pt-0">
-            <!-- Две колонки: родитель и ребёнок -->
-            <div class="row g-4">
-                <!-- Родитель -->
-                <div class="col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                        <h5 class="text-primary mb-3">
-                            <i class="fas fa-user"></i> Родитель
-                        </h5>
-                        <div class="row g-2">
-                            <div class="col-4 text-muted">Фамилия:</div>
-                            <div class="col-8 fw-semibold">{{ enrollment.parent_last_name }}</div>
-                            
-                            <div class="col-4 text-muted">Имя:</div>
-                            <div class="col-8 fw-semibold">{{ enrollment.parent_first_name }}</div>
-                            
-                            <div class="col-4 text-muted">Отчество:</div>
-                            <div class="col-8">{{ enrollment.parent_middle_name|default:"—" }}</div>
-                            
-                            <div class="col-4 text-muted">Email:</div>
-                            <div class="col-8">{{ enrollment.user.email }}</div>
-                            
-                            <div class="col-4 text-muted">Телефон:</div>
-                            <div class="col-8">{{ enrollment.user.profile.phone|default:"—" }}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Ребёнок -->
-                <div class="col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                        <h5 class="text-success mb-3">
-                            <i class="fas fa-child"></i> Ребёнок
-                        </h5>
-                        <div class="row g-2">
-                            <div class="col-4 text-muted">Фамилия:</div>
-                            <div class="col-8 fw-semibold">{{ enrollment.child_last_name }}</div>
-                            
-                            <div class="col-4 text-muted">Имя:</div>
-                            <div class="col-8 fw-semibold">{{ enrollment.child_first_name }}</div>
-                            
-                            <div class="col-4 text-muted">Отчество:</div>
-                            <div class="col-8">{{ enrollment.child_middle_name|default:"—" }}</div>
-                            
-                            <div class="col-4 text-muted">Дата рождения:</div>
-                            <div class="col-8">{{ enrollment.child_birth_date|date:"d.m.Y" }}</div>
-                            
-                            <div class="col-4 text-muted">Доп. информация:</div>
-                            <div class="col-8">{{ enrollment.additional_info|default:"—" }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Документы (только для under_review) -->
+        <div class="col-xl-8 col-lg-7">
+            
             {% if enrollment.status == 'under_review' %}
-                <div class="mt-4">
-                    <h5 class="text-info mb-3">
-                        <i class="fas fa-file-alt"></i> Загруженные документы
-                    </h5>
-                    {% with docs=enrollment.documents.all %}
-                        {% if docs %}
-                            <div class="row g-3">
-                                {% for doc in docs %}
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center bg-white">
-                                        <i class="fas fa-file-pdf fa-3x text-danger mb-2"></i>
-                                        <h6 class="fw-bold mb-1">{{ doc.get_document_type_display }}</h6>
-                                        <small class="text-muted">{{ doc.file.name|slice:"-25" }}</small>
-                                        <hr>
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye"></i> Открыть
-                                            </a>
-                                            <a href="{{ doc.file.url }}" download class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-download"></i> Скачать
-                                            </a>
+                <div class="dashboard-card">
+                    <div class="card-header-custom border-bottom-0 pb-0 bg-white">
+                        <h4 class="m-0 py-2 fw-bold text-dark">Шаг 1: Верификация документов</h4>
+                    </div>
+                    <div class="p-4">
+                        {% with docs=enrollment.documents.all %}
+                            {% if docs %}
+                                <div class="row g-3 mb-4">
+                                    {% for doc in docs %}
+                                    <div class="col-sm-6 col-md-4">
+                                        <div class="doc-box">
+                                            <i class="fas fa-file-pdf fa-2x text-danger mb-3"></i>
+                                            <div class="fw-bold text-dark text-truncate mb-1" style="font-size: 0.85rem;" title="{{ doc.get_document_type_display }}">
+                                                {{ doc.get_document_type_display }}
+                                            </div>
+                                            
+                                            {% if doc.file.url|lower|slice:"-4:" == ".jpg" or doc.file.url|lower|slice:"-5:" == ".jpeg" or doc.file.url|lower|slice:"-4:" == ".png" %}
+                                                <div class="my-2 bg-white border rounded d-flex align-items-center justify-content-center overflow-hidden" style="height: 80px;">
+                                                    <img src="{{ doc.file.url }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                                                </div>
+                                            {% else %}
+                                                <div class="text-muted font-monospace small mb-3 text-truncate">{{ doc.file.name|slice:"-15:" }}</div>
+                                            {% endif %}
+
+                                            <div class="d-flex justify-content-center gap-2 mt-3">
+                                                <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-primary w-100"><i class="fas fa-eye"></i> Просмотр</a>
+                                            </div>
                                         </div>
-                                        {% if doc.file.url|lower|slice:"-4:" == ".jpg" or doc.file.url|lower|slice:"-5:" == ".jpeg" or doc.file.url|lower|slice:"-4:" == ".png" %}
-                                            <div class="mt-2">
-                                                <img src="{{ doc.file.url }}" class="img-fluid img-thumbnail" style="max-height: 80px;">
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-light border text-muted d-flex align-items-center gap-3 p-4 rounded-3 mb-4">
+                                    <i class="fas fa-folder-open fa-2x"></i>
+                                    <div>
+                                        <strong class="d-block text-dark">Нет прикрепленных файлов</strong>
+                                        <span class="small">Пользователь отправил пустую анкету.</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+
+                        <div class="bg-light rounded-4 p-4 border">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-dark">Мотивированный отказ (если есть ошибки в документах)</label>
+                                    <textarea name="comment" class="form-control custom-textarea" rows="2" placeholder="Опишите, что нужно исправить пользователю..."></textarea>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" name="action" value="approve" class="btn btn-success action-btn flex-grow-1" style="background-color: #059669; border: none;">
+                                        <i class="fas fa-check"></i> Утвердить документы и выставить счёт
+                                    </button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-danger action-btn">
+                                        <i class="fas fa-times"></i> Вернуть на доработку
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif enrollment.status == 'payment_review' %}
+                <div class="dashboard-card">
+                    <div class="card-header-custom border-bottom-0 pb-0 bg-white">
+                        <h4 class="m-0 py-2 fw-bold text-dark">Шаг 2: Проводка платежа</h4>
+                    </div>
+                    <div class="p-4">
+                        {% if enrollment.receipt %}
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-7">
+                                    <div class="doc-box p-2 d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                                        {% if enrollment.receipt.url|lower|slice:"-4:" == ".jpg" or enrollment.receipt.url|lower|slice:"-5:" == ".jpeg" or enrollment.receipt.url|lower|slice:"-4:" == ".png" %}
+                                            <img src="{{ enrollment.receipt.url }}" class="img-fluid rounded" style="max-height: 400px;">
+                                        {% else %}
+                                            <div class="text-center">
+                                                <i class="fas fa-file-invoice fa-4x text-secondary mb-3"></i>
+                                                <div class="fw-bold">{{ enrollment.receipt.name|slice:"-25:" }}</div>
                                             </div>
                                         {% endif %}
                                     </div>
                                 </div>
-                                {% endfor %}
+                                <div class="col-md-5 d-flex flex-column gap-2">
+                                    <a href="{{ enrollment.receipt.url }}" target="_blank" class="btn btn-primary action-btn w-100">
+                                        <i class="fas fa-expand-arrows-alt"></i> Открыть чек на весь экран
+                                    </a>
+                                    <a href="{{ enrollment.receipt.url }}" download class="btn btn-outline-secondary action-btn w-100">
+                                        <i class="fas fa-download"></i> Скачать файл чека
+                                    </a>
+                                    
+                                    <div class="mt-auto p-3 bg-warning-subtle text-warning-emphasis rounded-3 border border-warning-subtle small">
+                                        <i class="fas fa-info-circle mb-1 d-block fs-6"></i>
+                                        Сверьте сумму, дату перевода и реквизиты. Если платеж поступил на счет центра, подтвердите заявку.
+                                    </div>
+                                </div>
                             </div>
                         {% else %}
-                            <p class="text-muted">Документы не загружены</p>
-                        {% endif %}
-                    {% endwith %}
-                </div>
-
-                <!-- Форма действий -->
-                <div class="mt-4 pt-2 border-top">
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Комментарий (при отклонении)</label>
-                            <textarea name="comment" class="form-control" rows="2" placeholder="Укажите причину отказа..."></textarea>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" name="action" value="approve" class="btn btn-success">
-                                <i class="fas fa-check"></i> Одобрить
-                            </button>
-                            <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
-                                <i class="fas fa-times"></i> Отклонить
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            {% endif %}
-
-            <!-- Чек и действия для payment_review -->
-            {% if enrollment.status == 'payment_review' %}
-                <div class="mt-4">
-                    <h5 class="text-warning mb-3">
-                        <i class="fas fa-receipt"></i> Чек об оплате
-                    </h5>
-                    {% if enrollment.receipt %}
-                        <div class="border rounded p-3 text-center bg-white">
-                            {% if enrollment.receipt.url|lower|slice:"-4:" == ".jpg" or enrollment.receipt.url|lower|slice:"-5:" == ".jpeg" or enrollment.receipt.url|lower|slice:"-4:" == ".png" %}
-                                <img src="{{ enrollment.receipt.url }}" class="img-fluid img-thumbnail mb-3" style="max-height: 200px;">
-                            {% endif %}
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{{ enrollment.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-eye"></i> Открыть полностью
-                                </a>
-                                <a href="{{ enrollment.receipt.url }}" download class="btn btn-sm btn-outline-secondary">
-                                    <i class="fas fa-download"></i> Скачать
-                                </a>
+                            <div class="alert alert-danger border-0 rounded-3 p-4 mb-4">
+                                <i class="fas fa-exclamation-triangle me-2"></i> Чек об оплате отсутствует.
                             </div>
-                        </div>
-                    {% else %}
-                        <p class="text-muted">Чек не загружен</p>
-                    {% endif %}
-                </div>
+                        {% endif %}
 
-                <!-- Форма действий -->
-                <div class="mt-4 pt-2 border-top">
-                    <form method="post">
-                        {% csrf_token %}
+                        <div class="bg-light rounded-4 p-4 border">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-dark">Комментарий при отбраковке платежа</label>
+                                    <textarea name="comment" class="form-control custom-textarea" rows="2" placeholder="Например: Платёж не найден в выписке банка..."></textarea>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" name="action" value="confirm_payment" class="btn btn-success action-btn flex-grow-1" style="background-color: #059669; border: none;">
+                                        <i class="fas fa-check-double"></i> Оплата поступила, зачислить!
+                                    </button>
+                                    <button type="submit" name="action" value="reject_payment" class="btn btn-danger action-btn">
+                                        <i class="fas fa-undo"></i> Отклонить транзакцию
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+            {% else %}
+                <div class="dashboard-card">
+                    <div class="p-5 text-center">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Комментарий (при отклонении)</label>
-                            <textarea name="comment" class="form-control" rows="2" placeholder="Укажите причину отказа..."></textarea>
+                            {% if enrollment.status == 'paid' %}
+                                <i class="fas fa-check-circle fa-4x text-success opacity-75"></i>
+                            {% elif enrollment.status == 'rejected' %}
+                                <i class="fas fa-times-circle fa-4x text-danger opacity-75"></i>
+                            {% else %}
+                                <i class="fas fa-clock fa-4x text-secondary opacity-50"></i>
+                            {% endif %}
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" name="action" value="confirm_payment" class="btn btn-success">
-                                <i class="fas fa-check"></i> Подтвертить оплату
-                            </button>
-                            <button type="submit" name="action" value="reject_payment" class="btn btn-outline-danger">
-                                <i class="fas fa-times"></i> Отклонить чек
-                            </button>
-                        </div>
-                    </form>
+                        <h4 class="fw-bold text-dark">Заявка обработана</h4>
+                        <p class="text-muted">Текущий статус: <strong>{{ enrollment.get_status_display }}</strong>. <br>Активных действий со стороны финансового отдела в данный момент не требуется.</p>
+                        
+                        {% if enrollment.receipt %}
+                            <a href="{{ enrollment.receipt.url }}" target="_blank" class="btn btn-outline-primary mt-3 action-btn rounded-pill px-4">
+                                <i class="fas fa-receipt"></i> Просмотреть прикрепленный чек
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             {% endif %}
+
         </div>
     </div>
 </div>

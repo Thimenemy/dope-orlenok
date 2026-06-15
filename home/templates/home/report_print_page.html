@@ -1,0 +1,121 @@
+{% extends "home/base_auth.html" %}
+
+{% block title %}Академический отчёт: {{ report.student.first_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-paper {
+        background: #fff;
+        max-width: 850px;
+        margin: 1.5rem auto;
+        padding: 45px 55px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+    }
+    .report-header { border-bottom: 2px solid #198754; padding-bottom: 12px; margin-bottom: 30px; }
+    .stat-box { background: #f8fafc; padding: 18px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+
+    /* КРИТИЧЕСКИ СТИЛЬ ДЛЯ ПЕЧАТИ В PDF */
+    @media print {
+        body { background: #fff !important; }
+        .report-paper { box-shadow: none; border: none; margin: 0; padding: 0; max-width: 100%; }
+        /* Прячем абсолютно всю навигацию, вкладки и шапки системы */
+        header, footer, .sidebar, .nav-tabs-wrapper, .no-print { display: none !important; }
+        .main-content-layout { padding: 0 !important; overflow: visible !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3 no-print" style="max-width: 850px; margin: 0 auto;">
+    <button onclick="window.print()" class="btn btn-success rounded-pill px-4 shadow-sm fw-semibold">
+        <i class="fas fa-file-pdf me-1"></i> Сохранить документ в PDF / Печать
+    </button>
+</div>
+
+<div class="report-paper">
+    <div class="report-header d-flex justify-content-between align-items-end">
+        <div>
+            <h2 class="fw-bold m-0 text-dark">Академический отчёт об успеваемости</h2>
+            <p class="text-muted small m-0 mt-1">Официальная выписка по результатам окончания курса</p>
+        </div>
+        <div class="text-end">
+            <h4 class="fw-bold text-success m-0">Образовательный Центр</h4>
+            <small class="text-muted">Дата выдачи: {{ report.generated_at|date:"d.m.Y" }}</small>
+        </div>
+    </div>
+
+    <div class="row mb-4 fs-5">
+        <div class="col-10">
+            <div class="mb-1">Студент: <strong class="text-dark">{{ report.student.last_name }} {{ report.student.first_name }}</strong></div>
+            <div class="mb-1 text-secondary" style="font-size: 0.95rem;">Учебный курс: <strong>{{ report.group.course.name }}</strong></div>
+            <div class="text-secondary" style="font-size: 0.95rem;">Группа: "{{ report.group.name }}" &bull; Наставник: {{ report.group.teacher.get_full_name|default:report.group.teacher.username }}</div>
+        </div>
+    </div>
+
+    <div class="mb-5">
+        <h5 class="fw-bold mb-3 text-dark" style="font-size: 1.05rem;"><i class="fas fa-book me-2 text-secondary"></i>Подробные результаты по занятиям</h5>
+        <div class="table-responsive border rounded-3">
+            <table class="table align-middle m-0 text-center" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 120px;">Дата урока</th>
+                        <th style="width: 100px;">День</th>
+                        <th class="text-start">Тема пройденного занятия</th>
+                        <th style="width: 130px;">Присутствие</th>
+                        <th style="width: 100px;">Оценка</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in lessons_history %}
+                    <tr>
+                        <td class="fw-bold text-dark">{{ entry.schedule.date|date:"d.m.Y" }}</td>
+                        <td class="text-secondary">{{ entry.schedule.date|date:"l" }}</td> <td class="text-start text-dark text-truncate" style="max-width: 320px;" title="{{ entry.schedule.topic }}">
+                            {{ entry.schedule.topic|default:"Тема не указана преподавателем" }}
+                        </td>
+                        <td>
+                            {% if entry.attendance %}
+                                <span class="text-success fw-bold"><i class="fas fa-check me-1"></i> Был(а)</span>
+                            {% else %}
+                                <span class="text-danger fw-bold"><i class="fas fa-times me-1"></i> Пропуск (Н)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.grade %}
+                                <span class="badge bg-primary px-2.5 py-1.5 font-monospace fw-bold" style="font-size: 0.85rem;">{{ entry.grade }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-3 text-muted italic">Данные посещаемости и оценок отсутствуют.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="pt-3 border-top">
+        <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5; text-align: justify;">
+            Данный документ сформирован автоматически информационной системой образовательного центра на основании записей электронного учебного журнала. Показатели отражают степень усвоения теоретического материала, успешность выполнения практических заданий и уровень дисциплины студента на протяжении всего периода обучения.
+        </p>
+        
+        <div class="d-flex justify-content-between mt-5 pt-4">
+            <div class="text-center">
+                <div class="border-bottom border-secondary" style="width: 220px; height: 35px;"></div>
+                <small class="text-muted d-block mt-1">Подпись руководителя / преподавателя</small>
+            </div>
+            <div class="text-center">
+                <div class="border-bottom border-secondary d-flex align-items-center justify-content-center pb-1" style="width: 200px; height: 35px; color: #cbd5e1; font-weight: bold;">
+                    М.П.
+                </div>
+                <small class="text-muted d-block mt-1">Печать учебного заведения</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -590,18 +590,28 @@
         document.getElementById('reply-preview-container').classList.add('d-none');
     };
 
-    // НАШ ОТРЕМОНТИРОВАННЫЙ ОБРАБОТЧИК ВЕБ-СОКЕТА С АВТОПРОЧТЕНИЕМ НА БЭКЕНДЕ
+    // ОБРАБОТЧИК ВЕБ-СОКЕТА С АВТОПРОЧТЕНИЕМ
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
         const isMine = (data.sender === "{{ user.username }}");
         renderMessage(data, isMine);
         
-        // Фоновый сигнал бэкенду, что новое чужое сообщение прочитано, так как чат открыт
+        // Если сообщение от другого человека, дергаем бэкенд, чтобы записать прочтение в БД
         if (!isMine) {
-            fetch(`/chat/room/${roomId}/`, {
+            fetch(`/chat/room/${roomId}/mark_read/`, {
                 method: 'GET',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }).catch(err => console.error("Ошибка автопрочтения сокета:", err));
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(res => {
+                if(res.status === 'success') {
+                    console.log("Бэкенд успешно записал прочтение в базу данных!");
+                }
+            })
+            .catch(err => console.error("Ошибка автопрочтения сокета:", err));
         }
     };
 

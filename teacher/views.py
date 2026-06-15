@@ -360,5 +360,127 @@ def group_chat_redirect(request, pk):
     # Перенаправляем в новый чат с параметром from_group
     url = reverse('chat:chat_detail', args=[room.id]) + f'?from_group={group.id}'
     return redirect(url)
+
+
+from django.db.models import Avg
+from .models import Group, JournalEntry, StudentCourseReport
+
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .models import Group, JournalEntry, StudentCourseReport
+
+@login_required
+@user_passes_test(is_teacher)
+def complete_course(request, group_id):
+    group = get_object_or_404(Group, id=group_id, teacher=request.user)
+    
+    if request.method == 'POST':
+        # Перебираем всех учеников, зачисленных в эту группу
+        for member in group.members.all():
+            child = member.child
+            
+            # Собираем все уроки этого ребёнка в данной группе
+            entries = JournalEntry.objects.filter(student=child, schedule__group=group)
+            
+            total = entries.count()
+            
+            # 1. Считаем посещаемость по твоему реальному полю 'attendance'
+            attended = entries.filter(attendance=True).count()
+            
+            # 2. Безопасный подсчет среднего балла по твоему реальному полю 'grade'
+            # Защищает от ошибок, если препод ввел буквы или оставил пустое место
+            valid_grades = []
+            for entry in entries:
+                if entry.grade and str(entry.grade).strip().isdigit():
+                    valid_grades.append(float(entry.grade))
+                    
+            avg_score = sum(valid_grades) / len(valid_grades) if valid_grades else 0
+            
+            # Автоматически выставляем уровень знаний на основе балла
+            if avg_score >= 4.5:
+                level = "Отличное освоение (Продвинутый уровень)"
+            elif avg_score >= 3.5:
+                level = "Хорошее освоение (Базовый уровень)"
+            elif avg_score >= 2.5:
+                level = "Удовлетворительное освоение"
+            else:
+                level = "Курс прослушан (Требуется повторение материала)"
+
+            # Записываем слепок успеваемости в базу данных
+            StudentCourseReport.objects.update_or_create(
+                group=group,
+                student=child,
+                defaults={
+                    'total_lessons': total,
+                    'attended_lessons': attended,
+                    'average_score': avg_score,
+                    'knowledge_level': level,
+                }
+            )
+            
+        # Блокируем группу от дальнейших изменений
+        group.is_completed = True
+        group.save()
+        
+        messages.success(request, f'Курс группы "{group.name}" успешно завершён. Отчёты отправлены родителям!')
+        return redirect('teacher:group_detail', pk=group.id)
     
 
+from django.db.models import Q
+
+@login_required
+@user_passes_test(is_teacher)
+def reports_list(request):
+    from .models import StudentCourseReport, Group
+    
+    # 1. Базовый запрос: берем все отчёты текущего преподавателя
+    reports = StudentCourseReport.objects.filter(
+        group__teacher=request.user
+    ).select_related('group__course', 'student')
+    
+    # 2. Собираем уникальные группы и курсы для выпадающих списков фильтра
+    groups = Group.objects.filter(
+        teacher=request.user, 
+        reports__isnull=False
+    ).select_related('course').distinct()
+    
+    # Используем Set (множество) чтобы избежать дублей курсов
+    courses = {g.course for g in groups if g.course}
+
+    # 3. Получаем параметры фильтрации из URL (GET-запрос)
+    student_name = request.GET.get('student_name', '').strip()
+    course_id = request.GET.get('course_id')
+    group_id = request.GET.get('group_id')
+    status = request.GET.get('status')
+    sort_by = request.GET.get('sort_by')
+
+    # 4. Применяем фильтры
+    if student_name:
+        reports = reports.filter(student__last_name__icontains=student_name)
+    if course_id:
+        reports = reports.filter(group__course__id=course_id)
+    if group_id:
+        reports = reports.filter(group_id=group_id)
+    if status:
+        # Используем icontains, чтобы искать по ключевому слову из статуса
+        reports = reports.filter(knowledge_level__icontains=status)
+
+    # 5. Применяем сортировку
+    if sort_by == 'score_desc':
+        reports = reports.order_by('-average_score')
+    elif sort_by == 'score_asc':
+        reports = reports.order_by('average_score')
+    elif sort_by == 'date_asc':
+        reports = reports.order_by('generated_at')
+    else:
+        # По умолчанию: сначала самые новые
+        reports = reports.order_by('-generated_at')
+
+    context = {
+        'reports': reports,
+        'groups': groups,
+        'courses': courses,
+        'base_template': 'teacher/base_teacher.html'
+    }
+    return render(request, 'teacher/reports_list.html', context)

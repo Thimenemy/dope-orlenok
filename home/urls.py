@@ -17,4 +17,5 @@ urlpatterns = [
         name="group_schedule_page",
     ),
     path("journal/", views.parent_journal, name="parent_journal"),
+    path('report/<int:report_id>/print/', views.view_report_print, name='view_report_print'),
 ]

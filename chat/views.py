@@ -26,16 +26,14 @@ def get_base_template(user):
 
 from django.db.models import Count, Q
 
+from django.contrib.auth.decorators import login_required
+from .models import ChatRoom
+
 @login_required
 def chat_list(request):
-    # Получаем комнаты, аннотируя каждую количеством непрочитанных сообщений (не от себя и не прочитанных мной)
+    # 1. Получаем список комнат БЕЗ глючного annotate
     rooms = request.user.chat_rooms.exclude(
         deleted_for=request.user
-    ).annotate(
-        unread_count=Count(
-            'messages',
-            filter=~Q(messages__sender=request.user) & ~Q(messages__read_by=request.user)
-        )
     ).order_by('-updated_at')
     
     rooms_data = []
@@ -49,15 +47,23 @@ def chat_list(request):
             else:
                 display_name = 'Неизвестный участник'
         
-        # Добавляем в массив room и unread_count, который мы посчитали в запросе
+        # 2. ЖЕЛЕЗОБЕТОННЫЙ ПОДСЧЕТ: Ищем конкретно в этой комнате чужие сообщения, 
+        # которых физически нет в нашем списке прочитанного.
+        unread_count = room.messages.exclude(
+            sender=request.user
+        ).exclude(
+            read_by=request.user
+        ).count()
+        
         rooms_data.append({
             'room': room, 
             'display_name': display_name,
-            'unread_count': room.unread_count
+            'unread_count': unread_count
         })
         
     is_teacher = request.user.groups.filter(name='Преподаватель').exists()
     base_template = get_base_template(request.user)
+    
     hidden_rooms = []
     if is_teacher:
         hidden_rooms = ChatRoom.objects.filter(deleted_for__isnull=False).exclude(deleted_for=request.user).distinct()
@@ -307,5 +313,33 @@ def upload_attachment(request, room_id):
 
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from .models import ChatRoom # или как называется твоя модель комнаты
+from .models import ChatRoom
 
+@login_required
+def mark_as_read(request, room_id):
+    try:
+        # Достаем комнату чата
+        room = ChatRoom.objects.get(id=room_id)
+        
+        # Находим ВСЕ сообщения в этой комнате, которые:
+        # 1. Отправлены НЕ текущим пользователем
+        # 2. Еще НЕ содержат текущего пользователя в списке прочитавших (read_by)
+        unread_messages = room.messages.exclude(
+            sender=request.user
+        ).exclude(
+            read_by=request.user
+        )
+        
+        # Если такие сообщения есть, проходимся по ним и железно записываем 
+        # пользователя в базу данных в таблицу связей read_by
+        if unread_messages.exists():
+            for msg in unread_messages:
+                msg.read_by.add(request.user)
+                
+        return JsonResponse({'status': 'success'})
+    
+    except ChatRoom.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Room not found'}, status=404)
+    except Exception as e:
+        # Ловим любую другую ошибку, чтобы фронтенд не зависал
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -11,6 +11,7 @@ class Group(models.Model):
     end_date = models.DateField(verbose_name='Дата окончания')
     max_students = models.PositiveSmallIntegerField(default=15, verbose_name='Максимум учеников')
     created_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False, verbose_name='Курс завершён')
 
     def __str__(self):
         return f"{self.name} ({self.course.name})"
@@ -48,3 +49,22 @@ class JournalEntry(models.Model):
 
     class Meta:
         unique_together = ('student', 'schedule')
+
+from django.db import models
+
+class StudentCourseReport(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='reports')
+    student = models.ForeignKey('accounts.Child', on_delete=models.CASCADE, related_name='course_reports')
+    
+    total_lessons = models.IntegerField(verbose_name='Всего уроков', default=0)
+    attended_lessons = models.IntegerField(verbose_name='Посещено уроков', default=0)
+    
+    average_score = models.DecimalField(max_digits=4, decimal_places=2, verbose_name='Средний балл')
+    knowledge_level = models.CharField(max_length=100, verbose_name='Уровень освоения')
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('group', 'student') # Один ребёнок — один отчёт по курсу
+
+    def __str__(self):
+        return f"Отчёт: {self.student.first_name} по группе {self.group.name}"

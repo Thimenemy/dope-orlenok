@@ -6,30 +6,154 @@
     <title>{% block title %}Панель бухгалтера{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; /* Фиксируем высоту экрана */
+            overflow: hidden; /* Запрещаем скролл для всего экрана */
+            background-color: #f8fafc; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        /* КРУПНАЯ И ФИКСИРОВАННАЯ ШАПКА */
+        .navbar-custom {
+            height: 70px;
+            background-color: #0f172a !important; /* Глубокий темный цвет системы */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 1030;
+        }
+        .navbar-brand i {
+            font-size: 1.4rem; 
+            color: #10b981; /* Изумрудный акцент для финансов */
+        }
+        .navbar-brand span {
+            font-size: 1.25rem; 
+            letter-spacing: -0.5px;
+        }
+
+        /* ГЛАВНЫЙ КОНТЕЙНЕР-ОБЕРТКА */
+        .app-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 70px);
+            position: relative;
+        }
+        
+        /* ФИКСИРОВАННЫЙ СЛЕВА SIDEBAR */
+        .sidebar { 
+            background-color: #1e293b;
+            width: 240px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            flex-shrink: 0;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+            z-index: 1020;
+        }
+        .sidebar-menu-wrapper {
+            padding-top: 1.5rem;
+            width: 100%;
+        }
+        .sidebar .nav-link { 
+            font-weight: 500; 
+            color: #94a3b8; 
+            padding: 0.9rem 1.5rem; 
+            border-radius: 8px;
+            margin: 0.3rem 0.75rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar .nav-link:hover { 
+            color: #fff; 
+            background-color: rgba(255,255,255,0.05);
+        }
+        .sidebar .nav-link.active { 
+            color: #fff; 
+            background-color: #059669; /* Зеленый изумруд для активной вкладки бухгалтера */
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        /* СКРОЛЛИРУЕМАЯ ЦЕНТРАЛЬНАЯ ЧАСТЬ */
+        .main-content { 
+            flex: 1;
+            overflow-y: auto; 
+            padding: 2rem 2.5rem;
+            background-color: #f8fafc;
+        }
+
+        /* АККУРАТНЫЙ ФУТЕР САЙДБАРА */
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: #0f172a; 
+            width: 100%;
+            text-align: center;
+        }
+        .sidebar-footer small {
+            color: #64748b;
+            font-size: 0.75rem;
+            display: block;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
+
     <header>
-        <nav class="navbar navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="{% url 'accountant:enrollment_list' %}">
-                    <i class="fas fa-calculator"></i> Бухгалтерия
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accountant:enrollment_list' %}">
+                    <i class="fas fa-calculator"></i> 
+                    <span class="fw-bold">Финансовый отдел</span>
                 </a>
-                <div class="d-flex">
-                    <span class="navbar-text me-3">{{ user.get_full_name|default:user.username }}</span>
-                    <form action="{% url 'accounts:logout' %}" method="post">
+                <div class="d-flex align-items-center">
+                    <span class="navbar-text me-4 text-light opacity-75 fw-medium">
+                        <i class="far fa-user-circle me-1 fs-5 align-middle"></i> Бухгалтер: {{ user.get_full_name|default:user.username }}
+                    </span>
+                    <form action="{% url 'accounts:logout' %}" method="post" class="m-0">
                         {% csrf_token %}
-                        <button class="btn btn-outline-light btn-sm" type="submit">Выйти</button>
+                        <button class="btn btn-outline-light btn-sm px-3 rounded-pill fw-medium" type="submit" style="font-size: 0.85rem;">
+                            <i class="fas fa-sign-out-alt me-1"></i> Выйти
+                        </button>
                     </form>
                 </div>
             </div>
         </nav>
     </header>
-    <main class="container my-4">
-        {% block content %}{% endblock %}
-    </main>
-    <footer class="text-center text-muted py-3">
-        &copy; {{ now|date:"Y" }} Образовательный центр
-    </footer>
+
+    <div class="app-container">
+        
+        <nav class="sidebar">
+            <div class="sidebar-menu-wrapper">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'enrollment_list' %}active{% endif %}" href="{% url 'accountant:enrollment_list' %}">
+                            <i class="fas fa-file-invoice-dollar"></i> Счета и Заявки
+                        </a>
+                    </li>
+                    </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <small>&copy; {% now "Y" %} Финансы и учёт</small>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+        
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -85,14 +85,31 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom flex-wrap gap-3">
     <div>
         <h1 class="h2 fw-bold text-dark m-0">{{ group.name }}</h1>
         <p class="text-muted small mb-0">Курс: <span class="fw-medium text-secondary">{{ group.course.name }}</span></p>
     </div>
-    <a href="{% url 'teacher:group_list' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
-        <i class="fas fa-arrow-left me-1"></i> К спискам групп
-    </a>
+    
+    <div class="d-flex align-items-center gap-2">
+        {% if not group.is_completed %}
+            <form method="post" action="{% url 'teacher:complete_course' group.id %}" class="m-0" 
+                  onsubmit="return confirm('Вы уверены, что хотите завершить курс?\n\nБудут автоматически рассчитаны средние баллы, сформированы PDF-отчёты успеваемости, а родители получат уведомления. Это действие нельзя отменить.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm fw-semibold">
+                    <i class="fas fa-flag-checkered me-1"></i> Завершить курс
+                </button>
+            </form>
+        {% else %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill shadow-sm" style="font-size: 0.85rem;">
+                <i class="fas fa-check-circle me-1"></i> Курс завершён
+            </span>
+        {% endif %}
+
+        <a href="{% url 'teacher:group_list' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
+            <i class="fas fa-arrow-left me-1"></i> К спискам
+        </a>
+    </div>
 </div>
 
 <ul class="nav nav-tabs custom-tabs mb-4" id="groupTabs" role="tablist">
