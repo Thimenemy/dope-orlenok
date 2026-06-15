@@ -1,0 +1,141 @@
+{% extends "accountant/base_accountant.html" %}
+
+{% block title %}Финансовый аудит и аналитика{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-card {
+        border: none;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.02);
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s;
+    }
+    .analytics-card:hover { transform: translateY(-2px); }
+    
+    .stat-number { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: #64748b; }
+    
+    .table-custom th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px;
+    }
+    .table-custom td { padding: 14px 12px; color: #334155; font-size: 0.9rem; border-bottom: 1px solid #f1f5f9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pb-2 mb-4 border-bottom">
+    <h1 class="h3 fw-bold text-dark m-0"><i class="fas fa-chart-pie text-success me-2"></i>Финансовый аудит и аналитика</h1>
+    <p class="text-muted small mb-0">Мониторинг кассовых оборотов, сменных бюджетов и рентабельности ИТ-направлений (БПЛА)</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card analytics-card p-4 border-start border-4 border-success">
+            <div class="stat-label mb-1">Проведено оплат (Валовый доход)</div>
+            <div class="stat-number text-success">{{ total_paid|floatformat:2 }} <span class="fs-5 fw-normal">₽</span></div>
+            <small class="text-muted small mt-2 d-block">Фактически поступившие средства на счёт</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card analytics-card p-4 border-start border-4 border-warning">
+            <div class="stat-label mb-1">Дебиторская задолженность</div>
+            <div class="stat-number text-warning">{{ total_debt|floatformat:2 }} <span class="fs-5 fw-normal">₽</span></div>
+            <small class="text-muted small mt-2 d-block">Заявки в обработке и выставленные счета</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card analytics-card p-4 border-start border-4 border-danger">
+            <div class="stat-label mb-1">Аннулировано оплат (Отказы)</div>
+            <div class="stat-number text-danger">{{ total_rejected|floatformat:2 }} <span class="fs-5 fw-normal">₽</span></div>
+            <small class="text-muted small mt-2 d-block">Сумма по отклонённым заявкам</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card analytics-card p-4 h-100">
+            <h5 class="fw-bold text-dark mb-3"><i class="far fa-calendar-alt text-muted me-2"></i>Показатели за текущий месяц</h5>
+            <div class="row g-3">
+                <div class="col-6 border-end">
+                    <div class="text-muted small mb-1">Касса за месяц:</div>
+                    <div class="h4 fw-bold text-dark m-0">{{ month_paid|floatformat:2 }} ₽</div>
+                </div>
+                <div class="col-6 ps-3">
+                    <div class="text-muted small mb-1">Проведено транзакций:</div>
+                    <div class="h4 fw-bold text-dark m-0">{{ month_count }} шт.</div>
+                </div>
+                <div class="col-12 border-top pt-3 mt-3">
+                    <div class="text-muted small mb-1">Средний чек закрытой заявки:</div>
+                    <div class="h5 fw-bold text-primary m-0">{{ month_avg|floatformat:2 }} ₽ / ребёнок</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card analytics-card p-4 h-100">
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history text-muted me-2"></i>Тренды и средние за квартал (90 дней)</h5>
+            <div class="row g-3">
+                <div class="col-6 border-end">
+                    <div class="text-muted small mb-1">Оборот за квартал:</div>
+                    <div class="h4 fw-bold text-dark m-0">{{ quarter_paid|floatformat:2 }} ₽</div>
+                </div>
+                <div class="col-6 ps-3">
+                    <div class="text-muted small mb-1">Среднее в месяц:</div>
+                    <div class="h4 fw-bold text-emerald m-0" style="color: #059669;">{{ avg_monthly_income|floatformat:2 }} ₽</div>
+                </div>
+                <div class="col-12 border-top pt-3 mt-3 text-secondary small">
+                    <i class="fas fa-info-circle text-info me-1"></i> Данный тренд отражает сезонность детского центра. Пиковые финансовые поступления приходятся на летний квартал сборов.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card analytics-card mb-4">
+    <div class="card-header bg-white py-3 fw-bold text-dark border-bottom">
+        <i class="fas fa-chart-bar text-success me-2"></i>Рейтинг рентабельности образовательных программ
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-custom align-middle m-0 text-center">
+                <thead>
+                    <tr>
+                        <th class="text-start ps-4">Название образовательного курса</th>
+                        <th>Количество зачисленных детей</th>
+                        <th class="text-end pe-4">Общая выручка направления</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in course_analytics %}
+                    <tr {% if "БПЛА" in course.course__name or "дрон" in course.course__name|lower %}style="background-color: #f0fdf4;"{% endif %}>
+                        <td class="text-start ps-4 fw-bold text-dark">
+                            {% if "БПЛА" in course.course__name or "дрон" in course.course__name|lower %}
+                                <i class="fas fa-helicopter text-success me-1.5"></i>
+                            {% else %}
+                                <i class="fas fa-book text-secondary me-1.5"></i>
+                            {% endif %}
+                            {{ course.course__name }}
+                        </td>
+                        <td class="fw-semibold text-secondary">{{ course.students_count }} чел.</td>
+                        <td class="text-end pe-4 fw-bold text-success">{{ course.total_revenue|floatformat:2 }} ₽</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4 text-muted">В базе данных ещё нет полностью оплаченных курсов.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

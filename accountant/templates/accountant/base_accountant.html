@@ -135,11 +135,16 @@
             <div class="sidebar-menu-wrapper">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'enrollment_list' %}active{% endif %}" href="{% url 'accountant:enrollment_list' %}">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'enrollment_list' or request.resolver_match.url_name == 'enrollment_detail' %}active{% endif %}" href="{% url 'accountant:enrollment_list' %}">
                             <i class="fas fa-file-invoice-dollar"></i> Счета и Заявки
                         </a>
                     </li>
-                    </ul>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'financial_report' %}active{% endif %}" href="{% url 'accountant:financial_report' %}">
+                            <i class="fas fa-chart-line"></i> Фин. отчётность
+                        </a>
+                    </li>
+                </ul>
             </div>
 
             <div class="sidebar-footer">

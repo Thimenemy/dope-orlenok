@@ -340,7 +340,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                 {% elif item.notification_type == 'course_report' %}
                     <div class="timeline-item-block" data-type="group_join" data-unread-id="{{ item.unread_key }}">
                         <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
@@ -462,6 +462,25 @@
                                 <div class="p-2.5 info-sub-block mb-3 small text-dark px-3">
                                     <strong>Примечание:</strong> {{ item.additional_info }}
                                 </div>
+                                {% endif %}
+                                {% if item.comment %}
+                                    <div class="p-3 mb-3 small rounded-3 px-3 shadow-sm" style="background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                                        <div class="fw-bold mb-1">
+                                            <i class="fas fa-exclamation-circle me-1.5 text-danger"></i> 
+                                            {% if item.status == 'awaiting_payment' or item.status == 'payment_review' %}
+                                                Замечание по оплате от финансового отдела:
+                                            {% else %}
+                                                Причина отклонения заявки/документов:
+                                            {% endif %}
+                                        </div>
+                                        <div class="fw-medium opacity-90" style="white-space: pre-wrap;">{{ item.comment }}</div>
+                                        
+                                        <div class="mt-2.5 pt-2 border-top border-danger-subtle small">
+                                            <a href="{% url 'enrollment:edit_enrollment' item.id %}" class="btn btn-xs btn-danger rounded-pill px-3 py-1 fw-semibold text-white text-decoration-none" style="font-size: 0.775rem;">
+                                                <i class="fas fa-edit me-1"></i> Исправить данные / Загрузить заново
+                                            </a>
+                                        </div>
+                                    </div>
                                 {% endif %}
 
                                 {% with docs=item.documents.all %}

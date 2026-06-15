@@ -36,6 +36,8 @@ class Enrollment(models.Model):
     child_birth_date = models.DateField(verbose_name="Дата рождения ребёнка")
     additional_info = models.TextField(blank=True, verbose_name="Дополнительная информация")
 
+    comment = models.TextField(blank=True, verbose_name="Комментарий/Причина отказа", default="")
+
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Стоимость курса', default=0)
     payment_details = models.TextField(blank=True, verbose_name='Реквизиты для оплаты')
     receipt = models.FileField(upload_to='payment_receipts/%Y/%m/%d/', blank=True, null=True, verbose_name='Чек об оплате')

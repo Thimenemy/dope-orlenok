@@ -1,0 +1,32 @@
+{% extends "accountant/base_accountant.html" %}
+
+{% block extra_css %}
+<style>
+    .invoice-paper {
+        background: #fff;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 40px;
+        border: 1px solid #e2e8f0;
+    }
+    @media print {
+        .no-print { display: none !important; }
+        .invoice-paper { border: none; margin: 0; padding: 0; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print mb-3 text-center">
+    <button onclick="window.print()" class="btn btn-success rounded-pill px-4">
+        <i class="fas fa-print me-2"></i> Печать счёта
+    </button>
+</div>
+
+<div class="invoice-paper">
+    <h2>Счёт на оплату №{{ enrollment.id }}</h2>
+    <p>Курс: {{ enrollment.course.name }}</p>
+    <p>Сумма: {{ enrollment.course.price }} руб.</p>
+    <p>Реквизиты: <br>{{ enrollment.payment_details|linebreaks }}</p>
+</div>
+{% endblock %}
