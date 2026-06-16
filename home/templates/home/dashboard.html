@@ -476,9 +476,15 @@
                                         <div class="fw-medium opacity-90" style="white-space: pre-wrap;">{{ item.comment }}</div>
                                         
                                         <div class="mt-2.5 pt-2 border-top border-danger-subtle small">
-                                            <a href="{% url 'enrollment:edit_enrollment' item.id %}" class="btn btn-xs btn-danger rounded-pill px-3 py-1 fw-semibold text-white text-decoration-none" style="font-size: 0.775rem;">
-                                                <i class="fas fa-edit me-1"></i> Исправить данные / Загрузить заново
-                                            </a>
+                                            {% if item.course.has_free_slots %}
+                                                <a href="{% url 'enrollment:edit_enrollment' item.id %}" class="btn btn-xs btn-danger rounded-pill px-3 py-1 fw-semibold text-white text-decoration-none" style="font-size: 0.775rem;">
+                                                    <i class="fas fa-edit me-1"></i> Исправить данные / Загрузить заново
+                                                </a>
+                                            {% else %}
+                                                <button class="btn btn-xs btn-secondary rounded-pill px-3 py-1 fw-semibold text-white" style="font-size: 0.775rem;" disabled>
+                                                    <i class="fas fa-exclamation-triangle me-1"></i> Мест нет (Запись заблокирована)
+                                                </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 {% endif %}

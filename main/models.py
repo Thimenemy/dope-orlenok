@@ -45,29 +45,24 @@ class Course(models.Model):
         )  # если нужно детальное отображение
 
     def get_total_slots(self):
-        """Общая емкость курса (например, 6 групп по 15 мест = 90 мест)"""
-        # Считаем количество активных групп, созданных для этого курса
-        active_groups_count = self.groups.count()
-        # Ограничиваем жестко до 6 групп, как в ТЗ диплома
-        if active_groups_count > 6:
-            active_groups_count = 6
-        return active_groups_count * 15
+        """Берем жесткие лимиты прямо из настроек админа, без привязки к таблице групп"""
+        # Если админ поставил 6 групп по 15 мест, значит всего мест 90.
+        return self.max_groups * self.slots_per_group
 
     def get_occupied_slots_count(self):
-        """Сколько мест железно занято (статус paid - оплачено)"""
+        """Считаем только тех, кто уже железно оплатил"""
         return self.enrollments.filter(status="paid").count()
 
     def get_reserve_slots_count(self):
-        """Динамический резерв (деньги еще не пришли, но квитанции выданы)"""
+        """Считаем тех, кто висит с квитанциями или чьи чеки проверяются"""
         return self.enrollments.filter(
             status__in=["awaiting_payment", "payment_review"]
         ).count()
 
     def has_free_slots(self):
-        """Проверка: остались ли физически свободные места"""
-        free_slots = (
-            self.get_total_slots()
-            - self.get_occupied_slots_count()
-            - self.get_reserve_slots_count()
+        """Простая и надежная математика: если занятых + забронированных меньше чем всего мест -> места есть!"""
+        total = self.get_total_slots()
+        occupied_and_reserved = (
+            self.get_occupied_slots_count() + self.get_reserve_slots_count()
         )
-        return free_slots > 0
+        return occupied_and_reserved < total

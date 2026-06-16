@@ -86,6 +86,12 @@ def edit_enrollment(request, enrollment_id):
     enrollment = get_object_or_404(Enrollment, id=enrollment_id, user=request.user)
     course = enrollment.course
 
+    # ЖЕСТКИЙ БЛОК: ЕСЛИ МЕСТ НЕТ, НЕ ДАЕМ РЕДАКТИРОВАТЬ И ВОЗВРАЩАТЬ В ОЧЕРЕДЬ
+    # =========================================================================
+    if not course.has_free_slots():
+        messages.error(request, f"Невозможно доработать заявку. На курсе '{course.name}' закончились свободные места.")
+        return redirect("home:dashboard")
+
     if request.method == "POST":
         # Передаем POST-данные в форму
         form = EnrollmentFullForm(request.POST, request.FILES, user=request.user)
