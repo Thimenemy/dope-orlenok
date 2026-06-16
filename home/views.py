@@ -1,12 +1,13 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from enrollment.models import Enrollment, EnrollmentDocument
-from teacher.models import JournalEntry
+from teacher.models import JournalEntry, Group, GroupMember, Schedule, StudentCourseReport
 from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse
-from teacher.models import Group
-
+from django.utils.timezone import localtime
+from django.views.decorators.http import require_POST
+import json
 
 def is_parent(user):
     return user.groups.filter(name='Родитель').exists()
@@ -43,6 +44,8 @@ def dashboard(request):
         enrollment.uploaded_docs = {doc.document_type: doc for doc in enrollment.documents.all()}
         enrollment.sort_date = enrollment.updated_at if enrollment.updated_at else enrollment.created_at
         enrollment.notification_type = 'enrollment'
+        
+        # ЖЕСТКИЙ СТАТИЧНЫЙ КЛЮЧ (Исключаем баг с ежесекундным изменением таймстемпа базы данных)
         enrollment.unread_key = f"enrollment-{enrollment.id}-{enrollment.status}"
     
     document_types = EnrollmentDocument.DOCUMENT_TYPES
@@ -83,7 +86,7 @@ def dashboard(request):
 
     schedule_updates = list(grouped_schedule_updates.values())[:10]
 
-    # --- НАШЕ НОВОЕ РЕШЕНИЕ БЕЗ LOG-ТАБЛИЦ: СОБИРАЕМ ОТЧЁТЫ ОБ УСПЕВАЕМОСТИ ---
+    # 4. ОТЧЕТЫ
     child_ids = children.values_list('id', flat=True)
     course_reports = StudentCourseReport.objects.filter(
         student_id__in=child_ids
@@ -92,12 +95,18 @@ def dashboard(request):
     for report in course_reports:
         report.sort_date = localtime(report.generated_at)
         report.notification_type = 'course_report'
-        # Железный ключ новизны для локалстораджа фронтенда
         report.unread_key = f"course_report-{report.id}"
 
-    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ХРОНОЛОГИЧЕСКУЮ ЛЕНТУ (Включая отчеты)
+    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ЛЕНТУ
     notifications_feed = list(enrollments) + list(group_memberships) + list(schedule_updates) + list(course_reports)
     notifications_feed.sort(key=lambda x: getattr(x, 'sort_date', now), reverse=True)
+    
+    # Извлекаем прочитанные ключи из базы данных профиля
+    read_keys = [k.strip() for k in profile.read_notifications_data.split(',') if k.strip()]
+    
+    # Выставляем флаг непрочитанности на бэкенде
+    for item in notifications_feed:
+        item.is_unread_by_db = item.unread_key not in read_keys
 
     context = {
         'profile_filled': profile_filled,
@@ -108,42 +117,47 @@ def dashboard(request):
     }
     return render(request, 'home/dashboard.html', context)
 
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
 
+@login_required
+@require_POST
+def mark_notification_read_ajax(request):
+    try:
+        data = json.loads(request.body)
+        unread_id = data.get('unread_id', '').strip()
+        
+        if unread_id:
+            profile = request.user.profile
+            current_keys = [k.strip() for k in profile.read_notifications_data.split(',') if k.strip()]
+            
+            if unread_id not in current_keys:
+                current_keys.append(unread_id)
+                profile.read_notifications_data = ",".join(current_keys)
+                profile.save()
+                return JsonResponse({'status': 'ok'})
+            return JsonResponse({'status': 'already_read'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid ID'}, status=400)
 
-def is_parent(user):
-    return user.groups.filter(name='Родитель').exists()
-
+# --- ОСТАЛЬНЫЕ ТВОИ ФУНКЦИИ БЕЗ ИЗМЕНЕНИЙ ---
 @login_required
 @user_passes_test(is_parent)
 def parent_schedule(request):
-    # Получаем группы, в которых есть хотя бы один ребёнок родителя
-    groups = Group.objects.filter(
-        members__child__parent=request.user
-    ).distinct().prefetch_related('members__child')
-    
-    # Для каждой группы добавим атрибут parent_children – список детей родителя в этой группе
+    groups = Group.objects.filter(members__child__parent=request.user).distinct().prefetch_related('members__child')
     for group in groups:
-        group.parent_children = group.members.filter(
-            child__parent=request.user
-        ).select_related('child')
-    
+        group.parent_children = group.members.filter(child__parent=request.user).select_related('child')
     return render(request, 'home/parent_schedule.html', {'groups': groups})
 
 @login_required
 @user_passes_test(is_parent)
 def get_group_schedule(request, group_id):
     group = get_object_or_404(Group, pk=group_id)
-    # Проверяем, что у родителя есть доступ к группе (через его детей)
     if not group.members.filter(child__parent=request.user).exists():
         return JsonResponse({'error': 'Нет доступа'}, status=403)
-    
     schedules = group.schedules.order_by('date')
     if not schedules.exists():
         return JsonResponse({'html': '<div class="alert alert-info">Расписание не задано</div>'})
-    
-    # Готовим данные для таблицы (аналогично teacher/views.py group_detail)
     weekday_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
     weeks_data = {}
     for s in schedules:
@@ -151,36 +165,22 @@ def get_group_schedule(request, group_id):
         end_of_week = start_of_week + timedelta(days=6)
         key = start_of_week.isoformat()
         if key not in weeks_data:
-            weeks_data[key] = {
-                'start': start_of_week,
-                'end': end_of_week,
-                'days': {i: [] for i in range(7)}
-            }
+            weeks_data[key] = {'start': start_of_week, 'end': end_of_week, 'days': {i: [] for i in range(7)}}
         weeks_data[key]['days'][s.date.weekday()].append(s)
     weeks = sorted(weeks_data.values(), key=lambda w: w['start'])
-    
-    # Рендерим шаблон таблицы (переиспользуем тот же, что у учителя, но без редактирования)
     from django.template.loader import render_to_string
-    html = render_to_string('home/_schedule_table.html', {
-        'weeks': weeks,
-        'weekday_names': weekday_names,
-    })
+    html = render_to_string('home/_schedule_table.html', {'weeks': weeks, 'weekday_names': weekday_names})
     return JsonResponse({'html': html})
 
 @login_required
 @user_passes_test(is_parent)
 def group_schedule_page(request, group_id):
     group = get_object_or_404(Group, pk=group_id)
-    # Проверяем, что у родителя есть доступ (хотя бы один ребёнок в группе)
     if not group.members.filter(child__parent=request.user).exists():
-        # Можно вернуть страницу с ошибкой или redirect
         return render(request, 'home/access_denied.html', {'group': group})
-    
     schedules = group.schedules.order_by('date')
     if not schedules.exists():
         return render(request, 'home/no_schedule.html', {'group': group})
-    
-    # Готовим данные для таблицы (как у преподавателя)
     weekday_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
     weeks_data = {}
     for s in schedules:
@@ -188,78 +188,29 @@ def group_schedule_page(request, group_id):
         end_of_week = start_of_week + timedelta(days=6)
         key = start_of_week.isoformat()
         if key not in weeks_data:
-            weeks_data[key] = {
-                'start': start_of_week,
-                'end': end_of_week,
-                'days': {i: [] for i in range(7)}
-            }
+            weeks_data[key] = {'start': start_of_week, 'end': end_of_week, 'days': {i: [] for i in range(7)}}
         weeks_data[key]['days'][s.date.weekday()].append(s)
     weeks = sorted(weeks_data.values(), key=lambda w: w['start'])
-    
-    context = {
-        'group': group,
-        'weeks': weeks,
-        'weekday_names': weekday_names,
-    }
-    return render(request, 'home/schedule_page.html', context)
+    return render(request, 'home/schedule_page.html', {'group': group, 'weeks': weeks, 'weekday_names': weekday_names})
 
 @login_required
 @user_passes_test(is_parent)
 def parent_journal(request):
-    # Список детей текущего родителя
     children = request.user.children.all()
     selected_child_id = request.GET.get('child_id')
     selected_child = None
     journal_entries = []
-
     if selected_child_id:
         selected_child = get_object_or_404(children, id=selected_child_id)
-        # Получаем все записи журнала для выбранного ребенка, сортируем по дате занятия
-        journal_entries = JournalEntry.objects.filter(
-            student=selected_child
-        ).select_related('schedule__group', 'schedule').order_by('schedule__date')
-
-    context = {
-        'children': children,
-        'selected_child': selected_child,
-        'journal_entries': journal_entries,
-    }
-    return render(request, 'home/parent_journal.html', context)
-
-
-@login_required
-def view_report_print(request, report_id):
-    from teacher.models import StudentCourseReport
-    report = get_object_or_404(StudentCourseReport, id=report_id)
-    
-    # Проверка безопасности: смотреть отчёт может препод или только родитель этого ребёнка
-    is_teacher = request.user.groups.filter(name='Преподаватель').exists()
-    if not is_teacher and report.student.parent != request.user:
-        return render(request, 'home/access_denied.html') # Страница ошибки доступа
-        
-    return render(request, 'home/report_print_page.html', {
-        'report': report,
-        'base_template': 'teacher/base_teacher.html' if is_teacher else 'home/base_auth.html'
-    })
+        journal_entries = JournalEntry.objects.filter(student=selected_child).select_related('schedule__group', 'schedule').order_by('schedule__date')
+    return render(request, 'home/parent_journal.html', {'children': children, 'selected_child': selected_child, 'journal_entries': journal_entries})
 
 @login_required
 def view_report_print(request, report_id):
     from teacher.models import StudentCourseReport, JournalEntry
     report = get_object_or_404(StudentCourseReport, id=report_id)
-    
-    # Проверка прав доступа
     is_teacher = request.user.groups.filter(name='Преподаватель').exists()
     if not is_teacher and report.student.parent != request.user:
         return render(request, 'home/access_denied.html')
-        
-    # --- НАШЕ ДОПОЛНЕНИЕ: ВЫТАСКИВАЕМ ИСТОРИЮ ПОСЕЩЕНИЙ И ОЦЕНОК ---
-    lessons_history = JournalEntry.objects.filter(
-        student=report.student,
-        schedule__group=report.group
-    ).select_related('schedule').order_by('schedule__date')
-        
-    return render(request, 'home/report_print_page.html', {
-        'report': report,
-        'lessons_history': lessons_history, # Передаём историю уроков в шаблон
-        'base_template': 'teacher/base_teacher.html' if is_teacher else 'home/base_auth.html'
-    })
+    lessons_history = JournalEntry.objects.filter(student=report.student, schedule__group=report.group).select_related('schedule').order_by('schedule__date')
+    return render(request, 'home/report_print_page.html', {'report': report, 'lessons_history': lessons_history, 'base_template': 'teacher/base_teacher.html' if is_teacher else 'home/base_auth.html'})

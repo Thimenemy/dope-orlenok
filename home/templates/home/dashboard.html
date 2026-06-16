@@ -86,7 +86,6 @@
         position: absolute;
         left: 6px;
         top: calc(50% - 4px);
-        display: none; /* Управляется скриптом */
         box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
     }
     
@@ -225,14 +224,14 @@
                 
                 {% if item.notification_type == 'group_join' %}
                     <div class="timeline-item-block" data-type="group_join" data-unread-id="{{ item.unread_key }}">
-                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm {% if item.is_unread_by_db %}is-unread-row{% endif %}" 
                              style="border-left: 4px solid #0d6efd !important;"
                              data-bs-toggle="collapse" 
                              data-bs-target="#group-details-{{ item.id }}" 
                              aria-expanded="false"
                              onclick="markAsRead('{{ item.unread_key }}', this)">
                             
-                            <div class="unread-marker"></div>
+                            <div class="unread-marker {% if not item.is_unread_by_db %}d-none{% endif %}"></div>
 
                             <div class="d-flex align-items-center gap-3">
                                 <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #0d6efd; background-color: #eff6ff;">
@@ -290,14 +289,14 @@
 
                 {% elif item.notification_type == 'schedule' %}
                     <div class="timeline-item-block" data-type="schedule" data-unread-id="{{ item.unread_key }}">
-                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm {% if item.is_unread_by_db %}is-unread-row{% endif %}" 
                              style="border-left: 4px solid #ffc107 !important;"
                              data-bs-toggle="collapse" 
                              data-bs-target="#sched-details-{{ item.unread_key }}" 
                              aria-expanded="false"
                              onclick="markAsRead('{{ item.unread_key }}', this)">
                             
-                            <div class="unread-marker"></div>
+                            <div class="unread-marker {% if not item.is_unread_by_db %}d-none{% endif %}"></div>
 
                             <div class="d-flex align-items-center gap-3">
                                 <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #b45309; background-color: #fffbeb;">
@@ -340,17 +339,17 @@
                             </div>
                         </div>
                     </div>
-
+                    
                 {% elif item.notification_type == 'course_report' %}
                     <div class="timeline-item-block" data-type="group_join" data-unread-id="{{ item.unread_key }}">
-                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm {% if item.is_unread_by_db %}is-unread-row{% endif %}" 
                              style="border-left: 4px solid #198754 !important;"
                              data-bs-toggle="collapse" 
                              data-bs-target="#report-details-{{ item.id }}" 
                              aria-expanded="false"
                              onclick="markAsRead('{{ item.unread_key }}', this)">
                             
-                            <div class="unread-marker"></div>
+                            <div class="unread-marker {% if not item.is_unread_by_db %}d-none{% endif %}"></div>
 
                             <div class="d-flex align-items-center gap-3">
                                 <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #198754; background-color: #e8f5e9;">
@@ -405,14 +404,14 @@
 
                 {% elif item.notification_type == 'enrollment' %}
                     <div class="timeline-item-block" data-type="enrollment" data-unread-id="{{ item.unread_key }}">
-                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm" 
+                        <div class="enrollment-notification-line d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-2 shadow-sm {% if item.is_unread_by_db %}is-unread-row{% endif %}" 
                              data-bs-toggle="collapse" 
                              data-bs-target="#details-{{ item.id }}" 
                              aria-expanded="false"
                              style="{% if item.status == 'submitted' %}border-left: 4px solid #64748b !important;{% elif item.status == 'under_review' %}border-left: 4px solid #0369a1 !important;{% elif item.status == 'awaiting_payment' %}border-left: 4px solid #4f46e5 !important;{% elif item.status == 'payment_review' %}border-left: 4px solid #475569 !important;{% elif item.status == 'paid' or item.status == 'approved' %}border-left: 4px solid #065f46 !important;{% elif item.status == 'rejected' %}border-left: 4px solid #991b1b !important;{% endif %}"
                              onclick="markAsRead('{{ item.unread_key }}', this)">
                             
-                            <div class="unread-marker"></div>
+                            <div class="unread-marker {% if not item.is_unread_by_db %}d-none{% endif %}"></div>
 
                             <div class="d-flex align-items-center gap-3">
                                 <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #1e293b;">
@@ -450,7 +449,7 @@
                                     <div class="col-md-6">
                                         <div class="p-3 info-sub-block h-100">
                                             <div class="small fw-bold text-secondary text-uppercase tracking-wider mb-2" style="font-size: 0.75rem;">
-                                                <i class="fas fa-user-shield me-1.5" style="color: #0d6efd;"></i> Заявитель (Родитель)
+                                                <i class="fas fa-user-shield me-1.5" style="color: #0d6efd;"></i> Родитель
                                             </div>
                                             <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ item.parent_last_name }} {{ item.parent_first_name }}</div>
                                             <small class="text-muted d-block"><i class="fas fa-phone-alt me-1"></i> {{ item.user.profile.phone|default:"—" }}</small>
@@ -463,12 +462,13 @@
                                     <strong>Примечание:</strong> {{ item.additional_info }}
                                 </div>
                                 {% endif %}
+
                                 {% if item.comment %}
                                     <div class="p-3 mb-3 small rounded-3 px-3 shadow-sm" style="background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
                                         <div class="fw-bold mb-1">
                                             <i class="fas fa-exclamation-circle me-1.5 text-danger"></i> 
                                             {% if item.status == 'awaiting_payment' or item.status == 'payment_review' %}
-                                                Замечание по оплате от финансового отдела:
+                                                Замечание по оплате от financial отдела:
                                             {% else %}
                                                 Причина отклонения заявки/документов:
                                             {% endif %}
@@ -574,19 +574,11 @@
 <script>
     // Функция пересчета и обновления красных бейджей количества
     function updateUnreadBadges() {
-        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
-        const items = document.querySelectorAll('.timeline-item-block');
-        let unreadCount = 0;
+        // Железобетонно считаем маркеры, у которых НЕТ класса d-none
+        const activeMarkers = document.querySelectorAll('.unread-marker:not(.d-none)');
+        const unreadCount = activeMarkers.length;
 
-        // Считаем только те блоки, чьих ID нет в списке прочитанных
-        items.forEach(item => {
-            const unreadId = item.getAttribute('data-unread-id');
-            if (unreadId && !readNotifications.includes(unreadId)) {
-                unreadCount++;
-            }
-        });
-
-        // 1. Обновляем овал-бейдж в заголовке ленты
+        // 1. Обновляем бейдж количества в заголовке ленты
         const headerBadge = document.getElementById('header-unread-count');
         if (headerBadge) {
             if (unreadCount > 0) {
@@ -597,62 +589,50 @@
             }
         }
 
-        // 2. Обновляем точку снизу справа на значке человека (в шапке)
+        // 2. Обновляем точку над аватаром в главном навигационном меню
         const profileWrapper = document.getElementById('profile-icon-nav');
         if (profileWrapper) {
             const dot = profileWrapper.querySelector('.profile-unread-dot');
             if (dot) {
-                if (unreadCount > 0) {
-                    dot.style.display = 'block';
-                } else {
-                    dot.style.display = 'none';
-                }
+                dot.style.display = unreadCount > 0 ? 'block' : 'none';
             }
+        }
+    }
+
+    // Функция гасит статус при клике и отправляет асинхронный AJAX-запрос на бэкенд Django
+    function markAsRead(unreadId, rowElement) {
+        const marker = rowElement.querySelector('.unread-marker');
+        
+        // Если карточка подсвечена (у маркера нет класса d-none) — гасим её
+        if (marker && !marker.classList.contains('d-none')) {
+            rowElement.classList.remove('is-unread-row');
+            marker.classList.add('d-none'); // Мгновенно скрываем синий кружок
+            
+            // Внедряем динамический URL через тег Django (исключаем ошибку 404/префиксов url)
+            fetch("{% url 'home:mark_read_ajax' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ unread_id: unreadId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok' || data.status === 'already_read') {
+                    updateUnreadBadges(); // Пересчитываем цифру на экране
+                }
+            })
+            .catch(error => console.error('Ошибка синхронизации уведомлений:', error));
         }
     }
 
     // Инициализация при загрузке страницы
     document.addEventListener("DOMContentLoaded", function() {
-        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
-        const items = document.querySelectorAll('.timeline-item-block');
-        
-        items.forEach(item => {
-            const unreadId = item.getAttribute('data-unread-id');
-            const lineRow = item.querySelector('.enrollment-notification-line');
-            const marker = item.querySelector('.unread-marker');
-
-            if (unreadId && lineRow && marker) {
-                if (!readNotifications.includes(unreadId)) {
-                    lineRow.classList.add('is-unread-row');
-                    marker.style.display = 'block';
-                }
-            }
-        });
-
-        // Запускаем подсчет бейджей
-        updateUnreadBadges();
+        updateUnreadBadges(); // Считаем баджи на старте на основе рендера Джанго
     });
 
-    // Функция гасит статус при клике и пересчитывает счетчики
-    function markAsRead(unreadId, rowElement) {
-        let readNotifications = JSON.parse(localStorage.getItem('read_notifications')) || [];
-        
-        if (!readNotifications.includes(unreadId)) {
-            readNotifications.push(unreadId);
-            localStorage.setItem('read_notifications', JSON.stringify(readNotifications));
-            
-            rowElement.classList.remove('is-unread-row');
-            const marker = rowElement.querySelector('.unread-marker');
-            if (marker) {
-                marker.style.display = 'none';
-            }
-            
-            // СРАЗУ ПЕРЕСЧИТЫВАЕМ БЕЙДЖИ, чтобы цифры обновились без перезагрузки
-            updateUnreadBadges();
-        }
-    }
-
-    // Фильтрация таб-меню (твоя оригинальная функция)
+    // Фильтрация таб-меню
     function filterTimeline(type, labelText, element) {
         document.getElementById('current-filter-label').innerText = labelText;
         const dropdownItems = document.querySelectorAll('.dropdown-item');

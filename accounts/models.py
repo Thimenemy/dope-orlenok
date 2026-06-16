@@ -13,6 +13,7 @@ class Profile(models.Model):
     middle_name = models.CharField(max_length=100, blank=True, verbose_name='Отчество')
     birth_date = models.DateField(null=True, blank=True, verbose_name='Дата рождения')
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True, blank=True, verbose_name='Пол')
+    read_notifications_data = models.TextField(blank=True, default="", verbose_name="Прочитанные уведомления")
 
 
     class Meta:
