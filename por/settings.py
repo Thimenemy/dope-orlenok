@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "accountant",
     "teacher",
     "chat",
+    "dashboard_admin",
 ]
 
 MIDDLEWARE = [

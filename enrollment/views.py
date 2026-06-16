@@ -17,6 +17,11 @@ def is_parent(user):
 def enroll(request, course_id=None, enrollment_id=None):
     course = get_object_or_404(Course, id=course_id, available=True)
 
+    # ЖЕСТКАЯ ПРОВЕРКА НАЛИЧИЯ МЕСТ ПЕРЕД ОФОРМЛЕНИЕМ АНКЕТЫ
+    if not course.has_free_slots():
+        messages.error(request, f"К сожалению, на курсе '{course.name}' закончились свободные места.")
+        return redirect("home:dashboard")
+
     if request.method == "POST":
         form = EnrollmentFullForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():

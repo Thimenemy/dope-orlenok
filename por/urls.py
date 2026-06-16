@@ -12,6 +12,7 @@ urlpatterns = [
     path("accountant/", include("accountant.urls")),
     path('teacher/', include('teacher.urls')),
     path("chat/", include("chat.urls")), 
+    path('panel-admin/', include('dashboard_admin.urls')),
 ]
 
 # Оставляем только эту стандартную и самую надежную конструкцию

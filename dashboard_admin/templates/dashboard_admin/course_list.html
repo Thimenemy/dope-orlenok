@@ -1,0 +1,148 @@
+{% extends base_template %}
+
+{% block extra_css %}
+<style>
+    /* Аккуратный и компактный микро-прогрессбар для сетки */
+    .slots-progress-container {
+        width: 150px;
+        margin: 6px auto 0 auto;
+    }
+    .progress-slots-bar {
+        height: 6px;
+        border-radius: 4px;
+        background-color: #e2e8f0;
+        display: flex;
+        overflow: hidden;
+    }
+    .progress-segment-paid { background-color: #10b981; width: 0%; transition: width 0.3s ease; } /* Изумрудный - Оплачено */
+    .progress-segment-reserve { background-color: #f59e0b; width: 0%; transition: width 0.3s ease; } /* Янтарный - Бронь */
+    
+    .slots-legend {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 5px;
+        font-weight: 500;
+    }
+    .dot-indicator {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom">
+    <div>
+        <h1 class="h3 fw-bold text-dark m-0">Управление программами обучения</h1>
+        <p class="text-muted small mb-0">Контроль стоимости, формата проведения, возрастных рамок и лимитов учебных мест центра</p>
+    </div>
+    <div>
+        <a href="{% url 'dashboard_admin:course_add' %}" class="btn btn-primary rounded-pill fw-semibold px-4 shadow-sm">
+            <i class="fas fa-plus me-1.5"></i> Добавить программу
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table align-middle text-center mb-0" style="background: #fff;">
+            <thead class="table-light text-secondary small uppercase">
+                <tr>
+                    <th class="text-start ps-4">Название курса</th>
+                    <th>Формат</th>
+                    <th>Возраст</th>
+                    <th>Стоимость</th>
+                    <th>Лимит групп</th>
+                    <th style="min-width: 190px;">Мест в группе</th>
+                    <th>Статус</th>
+                    <th style="width: 100px;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in courses %}
+                <tr>
+                    <td class="text-start ps-4 fw-bold text-dark">{{ course.name }}</td>
+                    <td><span class="badge bg-light text-secondary border px-2.5 py-1.5 rounded-3">{{ course.format }}</span></td>
+                    <td><span class="fw-medium text-dark">{{ course.age_min }}–{{ course.age_max }} лет</span></td>
+                    <td class="fw-bold text-dark">{{ course.price|floatformat:2 }} ₽</td>
+                    <td>{{ course.max_groups }}</td>
+                    
+                    <td>
+                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">
+                            {{ course.slots_per_group }} <span class="text-muted fw-normal" style="font-size: 0.85rem;">слотов</span>
+                        </div>
+                        
+                        <div class="slots-progress-container" 
+                             data-total="{{ course.slots_per_group }}" 
+                             data-paid="{{ course.get_occupied_slots_count }}" 
+                             data-reserve="{{ course.get_reserve_slots_count }}">
+                            
+                            <div class="progress-slots-bar">
+                                <div class="progress-segment-paid" title="Оплачено"></div>
+                                <div class="progress-segment-reserve" title="В брони"></div>
+                            </div>
+                            
+                            <div class="slots-legend">
+                                <span title="Оплачено"><span class="dot-indicator" style="background-color: #10b981;"></span>{{ course.get_occupied_slots_count }}</span>
+                                <span title="В брони"><span class="dot-indicator" style="background-color: #f59e0b;"></span>{{ course.get_reserve_slots_count }}</span>
+                                <span class="text-dark fw-bold" title="Всего занято мест">Σ {{ course.get_occupied_slots_count|add:course.get_reserve_slots_count }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <td>
+                        {% if course.available %}
+                            <span class="badge bg-success-subtle text-success px-3 py-1.5 rounded-pill fw-bold">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger px-3 py-1.5 rounded-pill fw-bold">Архив</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'dashboard_admin:course_edit' course.id %}" class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-semibold" style="font-size: 0.8rem;">
+                            <i class="fas fa-edit me-1"></i> Отредактировать
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">Каталог программ обучения пуст.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Рассчитываем ширину полосок прогресс-бара на стороне браузера (клиентская часть)
+    document.addEventListener("DOMContentLoaded", function() {
+        const containers = document.querySelectorAll('.slots-progress-container');
+        
+        containers.forEach(container => {
+            const total = parseInt(container.getAttribute('data-total')) || 0;
+            const paid = parseInt(container.getAttribute('data-paid')) || 0;
+            const reserve = parseInt(container.getAttribute('data-reserve')) || 0;
+            
+            if (total > 0) {
+                const paidPercent = (paid / total) * 100;
+                const reservePercent = (reserve / total) * 100;
+                
+                // Находим элементы полосок внутри контейнера и меняем им ширину в %
+                const paidBar = container.querySelector('.progress-segment-paid');
+                const reserveBar = container.querySelector('.progress-segment-reserve');
+                
+                if (paidBar) paidBar.style.width = paidPercent + '%';
+                if (reserveBar) reserveBar.style.width = reservePercent + '%';
+            }
+        });
+    });
+</script>
+{% endblock %}

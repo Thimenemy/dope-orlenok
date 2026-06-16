@@ -14,6 +14,25 @@ class CustomLoginView(LoginView):
     authentication_form = EmailAuthenticationForm
     redirect_authenticated_user = True
 
+    # КАТЕГОРИЧЕСКИЙ СМАРТ-РЕДИРЕКТ ПОСЛЕ ЛОГИНА ПО РОЛЯМ
+    def get_success_url(self):
+        user = self.request.user
+
+        # 1. Проверяем флаги глобального Администратора
+        if user.is_staff and user.is_superuser:
+            return reverse_lazy("dashboard_admin:course_list")
+
+        # 2. Проверяем Бухгалтера
+        if user.groups.filter(name="Бухгалтер").exists():
+            return reverse_lazy("accountant:enrollment_list")
+
+        # 3. Проверяем Преподавателя
+        if user.groups.filter(name="Преподаватель").exists():
+            return reverse_lazy("teacher:group_list")
+
+        # 4. По умолчанию (Родитель)
+        return reverse_lazy("home:dashboard")
+
 
 class RegisterView(CreateView):
     form_class = UserRegistrationForm

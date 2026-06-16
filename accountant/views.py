@@ -64,18 +64,46 @@ def enrollment_detail(request, pk):
         comment_text = request.POST.get('comment', '').strip()
         
         if action == 'approve':
+            # 1. Проверяем перед выдачей квитанции, не занял ли кто-то последнее место секунду назад
+            if not enrollment.course.has_free_slots():
+                messages.error(request, "Невозможно одобрить заявку. Свободные места на курсе закончились!")
+                return redirect('accountant:enrollment_list')
+
+            # 2. Переводим заявку в статус резерва. Для твоей ИС это 'awaiting_payment' (Ожидает оплаты)
             enrollment.status = 'awaiting_payment'
             enrollment.price = enrollment.course.price
-            enrollment.comment = "" # Очищаем старые комментарии, если они были
+            enrollment.comment = ""
             enrollment.payment_details = (
-                "ООО 'Образовательный中心'\n"
-                "ИНН 1234567890\n"
-                "КПП 123456789\n"
-                "БИК 044525225\n"
-                "Счёт 40702810123456789012\n"
-                f"Назначение платежа: Оплата курса {enrollment.course.name}"
+                "МУ ОЦ 'Орлёнок'\n"
+                "ИНН 1234567890 КПП 123456789\n"
+                f"Назначение платежа: Оплата за доп. образование, курс {enrollment.course.name}"
             )
-            messages.success(request, f'Заявка #{enrollment.id} одобрена. Счёт выставлен.')
+            enrollment.save() # Сохраняем бронь в базу!
+            messages.success(request, f'Заявка #{enrollment.id} одобрена. Счёт выставлен родителям.')
+
+            # 3. АВТОМАТИЧЕСКАЯ ОТМЕНА ОСТАЛЬНЫХ, ЕСЛИ МЕСТА КОНЧИЛИСЬ
+            current_course = enrollment.course
+            if not current_course.has_free_slots():
+                # Находим всех, кто подал доки на этот же курс и до сих пор висит в очереди на проверку
+                waiting_others = Enrollment.objects.filter(
+                    course=current_course,
+                    status='under_review'
+                ).exclude(id=enrollment.id)
+                
+                # Считаем точное число людей, которые сейчас держат квитанции (резерв)
+                reserve_count = current_course.get_reserve_slots_count()
+
+                # Построчно отменяем их заявки с твоим кастомным текстом
+                for other_enrollment in waiting_others:
+                    other_enrollment.status = 'rejected'
+                    other_enrollment.comment = (
+                        "Автоматический отказ системы: К сожалению, свободные места на выбранный курс закончились. "
+                        f"Попробуйте зайти через 3 дня, сейчас в резерве находится мест: {reserve_count}. "
+                        "Если кто-то из заявителей не оплатит выставленный счёт вовремя, места будут освобождены."
+                    )
+                    other_enrollment.save()
+                
+                messages.warning(request, f"На курсе {current_course.name} закончились места. Остальные заявки в очереди ({waiting_others.count()} шт.) автоматически отклонены.")
             
         elif action == 'reject':
             enrollment.status = 'rejected'

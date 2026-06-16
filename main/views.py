@@ -5,7 +5,14 @@ from .models import Course
 
 def home(request):
     if request.user.is_authenticated:
-        if request.user.groups.filter(name="Бухгалтер").exists():
+        # =========================================================================
+        # ЖЕСТКИЙ ПЕРЕХОД ДЛЯ АДМИНИСТРАТОРА СИСТЕМЫ
+        # =========================================================================
+        if request.user.is_staff and request.user.is_superuser:
+            return redirect("dashboard_admin:course_list")
+
+        # Твои стандартные роли
+        elif request.user.groups.filter(name="Бухгалтер").exists():
             return redirect("accountant:enrollment_list")
         elif request.user.groups.filter(name="Преподаватель").exists():
             return redirect("teacher:group_list")
