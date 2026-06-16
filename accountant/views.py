@@ -118,50 +118,62 @@ from enrollment.models import Enrollment
 def financial_report(request):  # или name finance_analytics, главное чтоб совпадало с urls.py
     pass
 
-# Вот готовый код функции:
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Q, Sum
+from enrollment.models import Enrollment
+from main.models import Course
+
+def is_accountant(user):
+    return user.groups.filter(name='Бухгалтер').exists()
+
 @login_required
 @user_passes_test(is_accountant)
 def finance_analytics(request):
-    now = timezone.now()
-    
-    # Вычисляем временные границы
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    start_of_quarter = now - timedelta(days=90)
-    
-    # 1. ОБЩИЕ ПОКАЗАТЕЛИ (ЗА ВСЁ ВРЕМЯ)
-    total_paid = Enrollment.objects.filter(status='paid').aggregate(Sum('price'))['price__sum'] or 0
-    total_debt = Enrollment.objects.filter(status__in=['awaiting_payment', 'payment_review']).aggregate(Sum('price'))['price__sum'] or 0
-    total_rejected = Enrollment.objects.filter(status='rejected').aggregate(Sum('price'))['price__sum'] or 0
+    # 1. Получаем параметры фильтрации из GET
+    financial_type = request.GET.get('financial_type', '') # прибыль, задолженность, удержание
+    course_id = request.GET.get('course', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
 
-    # 2. ПОКАЗАТЕЛИ ЗА ТЕКУЩИЙ МЕСЯЦ
-    month_paid = Enrollment.objects.filter(status='paid', updated_at__gte=start_of_month).aggregate(Sum('price'))['price__sum'] or 0
-    month_count = Enrollment.objects.filter(status='paid', updated_at__gte=start_of_month).count()
-    month_avg = Enrollment.objects.filter(status='paid', updated_at__gte=start_of_month).aggregate(Avg('price'))['price__avg'] or 0
+    # Базовый кверисет (берем только те заявки, которые прошли верификацию документов)
+    enrollments = Enrollment.objects.exclude(status__in=['draft', 'waiting_docs', 'under_review', 'submitted'])
 
-    # 3. ПОКАЗАТЕЛИ ЗА КВАРТАЛ (90 ДНЕЙ)
-    quarter_paid = Enrollment.objects.filter(status='paid', updated_at__gte=start_of_quarter).aggregate(Sum('price'))['price__sum'] or 0
-    
-    # Среднее в месяц за квартал (простая калькуляция)
-    avg_monthly_income = quarter_paid / 3
+    # 2. Фильтрация по типу финансового показателя
+    if financial_type == 'profit':
+        enrollments = enrollments.filter(status='paid')
+    elif financial_type == 'debt':
+        enrollments = enrollments.filter(status__in=['awaiting_payment', 'payment_review'])
+    elif financial_type == 'rejected':
+        enrollments = enrollments.filter(status='rejected')
 
-    # 4. СВОДКА ПО КУРСАМ (Выручка по каждому направлению, включая БПЛА)
-    course_analytics = Enrollment.objects.filter(status='paid').values(
-        'course__name'
-    ).annotate(
-        total_revenue=Sum('price'),
-        students_count=Count('id')
-    ).order_by('-total_revenue')
+    # 3. Фильтрация по курсу
+    if course_id:
+        enrollments = enrollments.filter(course_id=course_id)
+
+    # 4. Фильтрация по периоду (смотрим на дату изменения операции updated_at)
+    if date_from:
+        enrollments = enrollments.filter(updated_at__date__gte=date_from)
+    if date_to:
+        enrollments = enrollments.filter(updated_at__date__lte=date_to)
+
+    # Сортируем по дате операции (сначала новые)
+    enrollments = enrollments.order_by('-updated_at')
+
+    # 5. Вычисляем строку ИТОГО по отфильтрованному результату
+    total_sum = enrollments.aggregate(Sum('price'))['price__sum'] or 0
+
+    # Список курсов для выпадающего меню
+    courses = Course.objects.filter(available=True)
 
     context = {
-        'total_paid': total_paid,
-        'total_debt': total_debt,
-        'total_rejected': total_rejected,
-        'month_paid': month_paid,
-        'month_count': month_count,
-        'month_avg': month_avg,
-        'quarter_paid': quarter_paid,
-        'avg_monthly_income': avg_monthly_income,
-        'course_analytics': course_analytics,
+        'enrollments': enrollments,
+        'courses': courses,
+        'total_sum': total_sum,
+        'selected_financial_type': financial_type,
+        'filter_course': course_id,
+        'filter_date_from': date_from,
+        'filter_date_to': date_to,
         'base_template': 'accountant/base_accountant.html',
     }
     return render(request, 'accountant/financial_report.html', context)
@@ -169,7 +181,6 @@ def finance_analytics(request):
 
 
 from enrollment.models import Enrollment
-import os
 
 @login_required
 @user_passes_test(is_accountant)
