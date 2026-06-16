@@ -62,9 +62,12 @@
                 <span class="text-truncate" style="max-width: 140px;">{{ request.user.first_name }}</span>
                 <i class="fas fa-user-circle"></i>
             </div>
-            <a href="{% url 'accounts:logout' %}" class="btn btn-sm btn-outline-danger w-100 rounded-pill">
-                <i class="fas fa-sign-out-alt me-1"></i> Выйти
-            </a>
+            <form action="{% url 'accounts:logout' %}" method="post" class="w-100">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill">
+                    <i class="fas fa-sign-out-alt me-1"></i> Выйти
+                </button>
+            </form>
         </div>
     </div>
 
