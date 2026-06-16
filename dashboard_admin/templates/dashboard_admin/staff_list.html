@@ -1,0 +1,73 @@
+{% extends base_template %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom flex-wrap gap-3">
+    <div>
+        <h1 class="h3 fw-bold text-dark m-0">Управление учетными записями сотрудников</h1>
+        <p class="text-muted small mb-0">Контроль доступа персонала, создание учетных записей бухгалтеров и преподавателей центра</p>
+    </div>
+    <div>
+        <a href="{% url 'dashboard_admin:staff_add' %}" class="btn btn-primary rounded-pill fw-semibold px-4 shadow-sm">
+            <i class="fas fa-user-plus me-1.5"></i> Добавить сотрудника
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table align-middle text-center mb-0" style="background: #fff;">
+            <thead class="table-light text-secondary small uppercase">
+                <tr>
+                    <th class="text-start ps-4">ФИО Сотрудника</th>
+                    <th>Электронная почта (Логин)</th>
+                    <th>Системная роль</th>
+                    <th>Дата регистрации</th>
+                    <th style="width: 140px;">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for staff in staff_users %}
+                <tr>
+                    <td class="text-start ps-4 fw-bold text-dark">
+                        {{ staff.last_name }} {{ staff.first_name }}
+                    </td>
+                    <td class="font-monospace text-secondary small">{{ staff.email }}</td>
+                    <td>
+                        {% if staff.groups.all %}
+                            {% for group in staff.groups.all %}
+                                <span class="badge {% if group.name == 'Бухгалтер' %}bg-info-subtle text-info{% else %}bg-primary-subtle text-primary{% endif %} px-3 py-1.5 rounded-3 fw-bold">
+                                    {{ group.name }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="badge bg-secondary text-white px-2 py-1">Роль не назначена</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted small">{{ staff.date_joined|date:"d.m.Y H:i" }}</td>
+                    
+                    <td>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{% url 'dashboard_admin:staff_edit' staff.id %}" class="btn btn-sm btn-outline-primary px-2.5 rounded-pill fw-semibold" style="font-size: 0.8rem;" title="Редактировать сотрудника">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            <form action="{% url 'dashboard_admin:staff_delete' staff.id %}" method="post" class="m-0" 
+                                  onsubmit="return confirm('Вы абсолютно уверены, что хотите НАВСЕГДА удалить сотрудника {{ staff.get_full_name }} из базы данных центра?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger px-2.5 rounded-pill" style="font-size: 0.8rem;" title="Удалить сотрудника">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">В системе пока нет созданных сотрудников.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

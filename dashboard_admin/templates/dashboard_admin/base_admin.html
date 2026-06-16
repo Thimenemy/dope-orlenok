@@ -52,7 +52,7 @@
             <div class="sidebar-menu-wrapper">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link disabled opacity-50" href="#">
+                        <a class="nav-link {% if 'staff' in request.path %}active{% endif %}" href="{% url 'dashboard_admin:staff_list' %}">
                             <i class="fas fa-user-tie"></i> Сотрудники
                         </a>
                     </li>
