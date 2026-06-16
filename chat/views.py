@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.db.models import Count, Q
 
 User = get_user_model()
 
@@ -24,10 +25,6 @@ def get_base_template(user):
         return 'teacher/base_teacher.html'
     return 'home/base_auth.html'
 
-from django.db.models import Count, Q
-
-from django.contrib.auth.decorators import login_required
-from .models import ChatRoom
 
 @login_required
 def chat_list(request):
@@ -61,20 +58,21 @@ def chat_list(request):
             'unread_count': unread_count
         })
         
-    is_teacher = request.user.groups.filter(name='Преподаватель').exists()
+    is_teacher_user = request.user.groups.filter(name='Преподаватель').exists()
     base_template = get_base_template(request.user)
     
     hidden_rooms = []
-    if is_teacher:
+    if is_teacher_user:
         hidden_rooms = ChatRoom.objects.filter(deleted_for__isnull=False).exclude(deleted_for=request.user).distinct()
         
     return render(request, 'chat/chat_list.html', {
         'rooms_data': rooms_data,
-        'is_teacher': is_teacher,
-        'is_parent': not is_teacher,
+        'is_teacher': is_teacher_user,
+        'is_parent': not is_teacher_user,
         'base_template': base_template,
         'hidden_rooms': hidden_rooms,
     })
+
 
 @login_required
 def chat_detail(request, room_id):
@@ -86,18 +84,28 @@ def chat_detail(request, room_id):
     # --- СБРОС КРАСНОГО КРУЖОЧКА ПРИ ВХОДЕ В ЧАТ ---
     unread_messages = room.messages.exclude(sender=request.user).exclude(read_by=request.user)
     if unread_messages.exists():
-        # Добавляем текущего пользователя в список прочитавших для каждого нового сообщения
         for msg in unread_messages:
             msg.read_by.add(request.user)
     # -----------------------------------------------
 
     messages_history = room.messages.all()
-    base_template = get_base_template(request.user)
-    is_teacher = request.user.groups.filter(name='Преподаватель').exists()
+    
+    # ПРОВЕРКА НА ПРАВА АДМИНИСТРАТОРА ИЛИ НАЛИЧИЕ МАРКЕРА ИЗ АДМИНКИ
+    is_admin_user = request.user.is_staff or request.user.is_superuser
+    from_admin = request.GET.get('from_admin')
+    
+    if is_admin_user or from_admin:
+        base_template = 'dashboard_admin/base_admin.html'
+        back_url = reverse('dashboard_admin:chat_list')
+    else:
+        base_template = get_base_template(request.user)
+        back_url = reverse('chat:chat_list')
 
+    is_teacher_user = request.user.groups.filter(name='Преподаватель').exists()
     from_group = request.GET.get('from_group')
-    back_url = None
-    if from_group and is_teacher:
+    
+    # УДАЛИЛИ back_url = None, ТЕПЕРЬ ПЕРЕЗАПИСЫВАЕМ ССЫЛКУ ТОЛЬКО ЕСЛИ ОНА РЕАЛЬНО НУЖНА ПРЕПОДАВАТЕЛЮ
+    if from_group and is_teacher_user:
         try:
             group_id = int(from_group)
             if request.user.teaching_groups.filter(id=group_id).exists():
@@ -110,7 +118,7 @@ def chat_detail(request, room_id):
         other_participant = room.participants.exclude(id=request.user.id).first()
 
     available_users = []
-    if room.room_type == 'group' and (room.created_by == request.user or is_teacher):
+    if room.room_type == 'group' and (room.created_by == request.user or is_teacher_user):
         available_users = User.objects.exclude(id__in=room.participants.all()).exclude(id=request.user.id)
 
     context = {
@@ -118,11 +126,12 @@ def chat_detail(request, room_id):
         'messages': messages_history,
         'base_template': base_template,
         'back_url': back_url,
-        'is_teacher': is_teacher,
+        'is_teacher': is_teacher_user,
         'other_participant': other_participant,
         'available_users': available_users,
     }
     return render(request, 'chat/chat_detail.html', context)
+
 
 @login_required
 def create_chat(request):
@@ -163,6 +172,7 @@ def create_chat(request):
     base_template = get_base_template(request.user)
     return render(request, 'chat/create_chat.html', {'form': form, 'base_template': base_template})
 
+
 @login_required
 def create_private_chat(request, user_id):
     other_user = get_object_or_404(User, id=user_id)
@@ -178,6 +188,7 @@ def create_private_chat(request, user_id):
     room.participants.add(request.user, other_user)
     return redirect('chat:chat_detail', room_id=room.id)
 
+
 @login_required
 def delete_chat_for_me(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
@@ -187,6 +198,7 @@ def delete_chat_for_me(request, room_id):
     room.deleted_for.add(request.user)
     messages.success(request, 'Чат скрыт из вашего списка')
     return redirect('chat:chat_list')
+
 
 @login_required
 @user_passes_test(is_teacher)
@@ -199,6 +211,7 @@ def delete_chat_permanently(request, room_id):
     messages.success(request, 'Чат удалён полностью')
     return redirect('chat:chat_list')
 
+
 @login_required
 @user_passes_test(is_teacher)
 def restore_for_user(request, room_id):
@@ -207,10 +220,10 @@ def restore_for_user(request, room_id):
     messages.success(request, 'Чат восстановлен для всех участников.')
     return redirect('chat:chat_list')
 
+
 @login_required
 def invite_to_group_chat(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
-    # Разрешаем действие, если это группа И (пользователь — создатель ИЛИ он преподаватель)
     is_teacher_user = request.user.groups.filter(name="Преподаватель").exists()
     if room.room_type != 'group' or (room.created_by != request.user and not is_teacher_user):
         messages.error(request, 'У вас нет прав для управления участниками этого чата.')
@@ -226,10 +239,10 @@ def invite_to_group_chat(request, room_id):
             messages.success(request, f'{new_user.get_full_name()} добавлен в чат.')
     return redirect('chat:chat_detail', room_id=room.id)
 
+
 @login_required
 def remove_from_group_chat(request, room_id, user_id):
     room = get_object_or_404(ChatRoom, id=room_id)
-    # Разрешаем действие, если это группа И (пользователь — создатель ИЛИ он преподаватель)
     is_teacher_user = request.user.groups.filter(name="Преподаватель").exists()
     if room.room_type != 'group' or (room.created_by != request.user and not is_teacher_user):
         messages.error(request, 'У вас нет прав для управления участниками этого чата.')
@@ -242,6 +255,7 @@ def remove_from_group_chat(request, room_id, user_id):
     room.deleted_for.remove(user_to_remove)
     messages.success(request, f'{user_to_remove.get_full_name()} удалён из чата.')
     return redirect('chat:chat_detail', room_id=room.id)
+
 
 @login_required
 def edit_message(request, message_id):
@@ -259,6 +273,7 @@ def edit_message(request, message_id):
             messages.success(request, 'Сообщение отредактировано')
     return redirect('chat:chat_detail', room_id=msg.room.id)
 
+
 @login_required
 def delete_message(request, message_id):
     msg = get_object_or_404(ChatMessage, id=message_id)
@@ -269,6 +284,7 @@ def delete_message(request, message_id):
         msg.delete()
         messages.success(request, 'Сообщение удалено')
     return redirect('chat:chat_detail', room_id=msg.room.id)
+
 
 @login_required
 def upload_attachment(request, room_id):
@@ -290,7 +306,6 @@ def upload_attachment(request, room_id):
             content='',
             attachment=file,
             attachment_type=att_type
-            
         )
         msg_data = {
             'id': msg.id,
@@ -311,35 +326,20 @@ def upload_attachment(request, room_id):
     return JsonResponse({'error': 'Bad request'}, status=400)
 
 
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from .models import ChatRoom
-
 @login_required
 def mark_as_read(request, room_id):
     try:
-        # Достаем комнату чата
         room = ChatRoom.objects.get(id=room_id)
-        
-        # Находим ВСЕ сообщения в этой комнате, которые:
-        # 1. Отправлены НЕ текущим пользователем
-        # 2. Еще НЕ содержат текущего пользователя в списке прочитавших (read_by)
         unread_messages = room.messages.exclude(
             sender=request.user
         ).exclude(
             read_by=request.user
         )
-        
-        # Если такие сообщения есть, проходимся по ним и железно записываем 
-        # пользователя в базу данных в таблицу связей read_by
         if unread_messages.exists():
             for msg in unread_messages:
                 msg.read_by.add(request.user)
-                
         return JsonResponse({'status': 'success'})
-    
     except ChatRoom.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Room not found'}, status=404)
     except Exception as e:
-        # Ловим любую другую ошибку, чтобы фронтенд не зависал
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

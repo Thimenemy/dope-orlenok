@@ -1,0 +1,74 @@
+{% extends base_template %}
+
+{% block content %}
+<div class="pb-2 mb-4 border-bottom">
+    <h1 class="h3 fw-bold text-dark m-0">{{ title }}</h1>
+    <p class="text-muted small mb-0">Конфигурирование учетных данных законных представителей и плательщиков МУ ОЦ «Орлёнок»</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4" style="border-radius: 16px; background: #fff;">
+            <form method="post" autocomplete="off" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2.5 rounded-3 small mb-4">
+                        <i class="fas fa-exclamation-circle me-1"></i> {{ form.non_field_errors.0 }}
+                    </div>
+                {% endif %}
+
+                {% if can_edit_fields == False %}
+                    <div class="alert alert-warning border-0 small rounded-3 p-3 mb-4 d-flex align-items-start gap-2.5" style="background-color: #fffbeb; color: #92400e;">
+                        <i class="fas fa-exclamation-triangle fs-5 mt-0.5"></i>
+                        <div>
+                            <strong>Карточка заблокирована для глобальных изменений.</strong> 
+                            Дети данного родителя зачислены в группы и ведут обучение. Изменение ФИО и логина заблокировано во избежание десинхронизации бухгалтерских ведомостей. Разрешен сброс пароля.
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Фамилия</label>
+                        {{ form.last_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Имя</label>
+                        {{ form.first_name }}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-secondary small fw-bold text-uppercase">Электронная почта (Email)</label>
+                    {{ form.email }}
+                </div>
+
+                <div class="row g-3 mb-4 pt-3 border-top">
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">
+                            {% if 'Редактирование' in title %}Новый пароль{% else %}Пароль для входа{% endif %}
+                        </label>
+                        {{ form.password1 }}
+                        {% if 'Редактирование' in title %}
+                            <div class="text-muted" style="font-size: 0.725rem; margin-top: 4px;">Оставьте пустым, если не хотите менять</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Подтверждение пароля</label>
+                        {{ form.password2 }}
+                    </div>
+                </div>
+
+                <div class="pt-3 border-top d-flex justify-content-end gap-2">
+                    <a href="{% url 'dashboard_admin:parent_list' %}" class="btn btn-light px-4 rounded-pill border">Отмена</a>
+                    <button type="submit" class="btn btn-primary px-5 rounded-pill fw-semibold shadow-sm">
+                        <i class="fas {% if 'Редактирование' in title %}fa-save{% else %}fa-user-plus{% endif %} me-1.5"></i> 
+                        {% if 'Редактирование' in title %}Сохранить изменения{% else %}Зарегистрировать{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

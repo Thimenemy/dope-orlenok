@@ -303,3 +303,290 @@ def admin_staff_delete(request, user_id):
     staff_user.delete()
     messages.success(request, f'Учетная запись сотрудника "{staff_name}" навсегда удалена из базы данных системы.')
     return redirect('dashboard_admin:staff_list')
+
+
+
+# dashboard_admin/views.py
+
+from django.contrib.auth.models import User, Group
+from django.db.models import Sum, Q
+from accounts.models import Profile, Child
+from teacher.models import GroupMember, StudentCourseReport
+
+# Форма СОЗДАНИЯ родителя
+class ParentCreateForm(forms.ModelForm):
+    email = forms.EmailField(required=True, label="Email (Логин)", widget=forms.EmailInput(attrs={'class': 'form-control form-control-custom'}))
+    first_name = forms.CharField(required=True, label="Имя", widget=forms.TextInput(attrs={'class': 'form-control form-control-custom'}))
+    last_name = forms.CharField(required=True, label="Фамилия", widget=forms.TextInput(attrs={'class': 'form-control form-control-custom'}))
+    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom'}), label="Пароль")
+    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom'}), label="Подтверждение пароля")
+
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Этот email уже занят.")
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('password1') != cleaned_data.get('password2'):
+            raise forms.ValidationError("Пароли не совпадают.")
+        return cleaned_data
+
+# Форма РЕДАКТИРОВАНИЯ родителя
+class ParentEditForm(forms.ModelForm):
+    email = forms.EmailField(required=True, label="Email (Логин)", widget=forms.EmailInput(attrs={'class': 'form-control form-control-custom'}))
+    first_name = forms.CharField(required=True, label="Имя", widget=forms.TextInput(attrs={'class': 'form-control form-control-custom'}))
+    last_name = forms.CharField(required=True, label="Фамилия", widget=forms.TextInput(attrs={'class': 'form-control form-control-custom'}))
+    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom'}), label="Новый пароль (оставьте пустым)", required=False)
+    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom'}), label="Подтверждение пароля", required=False)
+
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name']
+
+    def __init__(self, *args, **kwargs):
+        can_edit_fields = kwargs.pop('can_edit_fields', True)
+        super().__init__(*args, **kwargs)
+        if not can_edit_fields:
+            self.fields['email'].disabled = True
+            self.fields['first_name'].disabled = True
+            self.fields['last_name'].disabled = True
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+            raise forms.ValidationError("Этот email уже зарегистрирован.")
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('password1') and cleaned_data.get('password1') != cleaned_data.get('password2'):
+            raise forms.ValidationError("Новые пароли не совпадают.")
+        return cleaned_data
+
+
+# 1. ВЬЮХА СПИСКА РОДИТЕЛЕЙ С CRM-АНАЛИТИКОЙ
+@login_required
+@user_passes_test(is_admin)
+def admin_parent_list(request):
+    # Берем всех юзеров из группы "Родитель"
+    parents = User.objects.filter(groups__name='Родитель').order_by('-date_joined')
+    
+    # Собираем аналитику для каждого родителя «на лету»
+    for parent in parents:
+        # Дети родителя
+        parent_children = Child.objects.filter(parent=parent)
+        parent.children_list = parent_children
+        
+        # Активные зачисления в группы и даты вступления
+        parent.memberships = GroupMember.objects.filter(child__in=parent_children).select_related('group__course', 'child')
+        
+        # Завершенные курсы (проверяем наличие сгенерированных финальных отчетов/сертификатов)
+        parent.completed_courses = StudentCourseReport.objects.filter(student__in=parent_children).select_related('group__course', 'student')
+        
+        # Финансы: Считаем сумму всех успешных оплат (status='paid') по заявкам родителя
+        total_paid = parent.enrollments.filter(status='paid').aggregate(sum_price=Sum('price'))['sum_price'] or 0
+        parent.total_paid_money = total_paid
+
+    return render(request, 'dashboard_admin/parent_list.html', {
+        'parents': parents,
+        'base_template': 'dashboard_admin/base_admin.html'
+    })
+
+
+# 2. ВЬЮХА ДОБАВЛЕНИЯ РОДИТЕЛЯ
+@login_required
+@user_passes_test(is_admin)
+def admin_parent_create(request):
+    if request.method == 'POST':
+        form = ParentCreateForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.username = form.cleaned_data['email'].split('@')[0]
+            if User.objects.filter(username=user.username).exists():
+                user.username = f"{user.username}_{User.objects.count()}"
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+            
+            # Назначаем роль
+            group, _ = Group.objects.get_or_create(name='Родитель')
+            user.groups.add(group)
+            
+            # Генерируем обязательный профиль
+            Profile.objects.create(user=user, phone='—', license_accepted=True, consent_given=True)
+            
+            messages.success(request, f'Родитель {user.get_full_name()} успешно добавлен.')
+            return redirect('dashboard_admin:parent_list')
+    else:
+        form = ParentCreateForm()
+    return render(request, 'dashboard_admin/parent_form.html', {'form': form, 'title': 'Регистрация родителя', 'base_template': 'dashboard_admin/base_admin.html'})
+
+
+# 3. ВЬЮХА ИЗМЕНЕНИЯ РОДИТЕЛЯ
+@login_required
+@user_passes_test(is_admin)
+def admin_parent_edit(request, user_id):
+    parent_user = get_object_or_404(User, groups__name='Родитель', id=user_id)
+    
+    # Блокировка: если дети родителя зачислены в группы — ФИО и Email менять нельзя
+    has_active_students = GroupMember.objects.filter(child__parent=parent_user).exists()
+    can_edit_fields = not has_active_students
+
+    if request.method == 'POST':
+        form = ParentEditForm(request.POST, instance=parent_user, can_edit_fields=can_edit_fields)
+        if form.is_valid():
+            user = form.save(commit=False)
+            if form.cleaned_data.get('password1'):
+                user.set_password(form.cleaned_data['password1'])
+            user.save()
+            messages.success(request, f'Данные родителя {user.get_full_name()} обновлены.')
+            return redirect('dashboard_admin:parent_list')
+    else:
+        form = ParentEditForm(instance=parent_user, can_edit_fields=can_edit_fields)
+        
+    return render(request, 'dashboard_admin/parent_form.html', {
+        'form': form,
+        'title': f'Редактирование профиля: {parent_user.get_full_name()}',
+        'base_template': 'dashboard_admin/base_admin.html',
+        'can_edit_fields': can_edit_fields
+    })
+
+
+# 4. ВЬЮХА УДАЛЕНИЯ РОДИТЕЛЯ
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def admin_parent_delete(request, user_id):
+    parent_user = get_object_or_404(User, groups__name='Родитель', id=user_id)
+    
+    # Проверка: если дети учатся, удалять аккаунт нельзя, иначе рухнет структура лагеря
+    if GroupMember.objects.filter(child__parent=parent_user).exists():
+        messages.error(request, f'Невозможно удалить аккаунт {parent_user.get_full_name()}! Его дети зачислены в учебные группы.')
+        return redirect('dashboard_admin:parent_list')
+        
+    parent_name = parent_user.get_full_name()
+    parent_user.delete()
+    messages.success(request, f'Аккаунт родителя "{parent_name}" и профили его детей удалены.')
+    return redirect('dashboard_admin:parent_list')
+
+
+# dashboard_admin/views.py
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.db.models import Q
+from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model
+
+# ИМПОРТИРУЕМ СТРОГО ТВОИ МОДЕЛИ ИЗ ТВОЕГО ПРИЛОЖЕНИЯ CHAT
+from chat.models import ChatRoom, ChatMessage
+
+User = get_user_model()
+
+@login_required
+@user_passes_test(is_admin)  # Твоя функция проверки прав администратора
+def admin_chat_list(request):
+    # 1. Получаем все чаты админа (исключая скрытые им в deleted_for), сортируем по обновлению
+    rooms = request.user.chat_rooms.exclude(deleted_for=request.user).order_by('-updated_at')
+    
+    rooms_data = []
+    for room in rooms:
+        # Формируем имя чата один в один как в твоём chat_list
+        if room.room_type == 'group':
+            display_name = room.name or 'Групповой чат'
+        else:
+            other = room.participants.exclude(id=request.user.id).first()
+            if other:
+                display_name = f"{other.last_name} {other.first_name}".strip() or other.username
+            else:
+                display_name = 'Неизвестный участник'
+        
+        # Считаем нечитанные сообщения для админа на основе твоего M2M поля read_by
+        unread_count = room.messages.exclude(sender=request.user).exclude(read_by=request.user).count()
+        
+        rooms_data.append({
+            'room': room,
+            'display_name': display_name,
+            'unread_count': unread_count
+        })
+        
+    # 2. Собираем списки пользователей для модалки создания нового чата
+    all_users = User.objects.exclude(id=request.user.id).order_by('last_name')
+    staff_users = all_users.filter(Q(is_staff=True) | Q(groups__name__in=['Бухгалтер', 'Преподаватель'])).distinct()
+    parent_users = all_users.filter(groups__name='Родитель')
+
+    return render(request, 'dashboard_admin/chat_list.html', {
+        'rooms_data': rooms_data,
+        'staff_users': staff_users,
+        'parent_users': parent_users,
+        'base_template': 'dashboard_admin/base_admin.html'
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def admin_chat_create(request):
+    chat_type = request.POST.get('chat_type')  # 'private' или 'group'
+    name = request.POST.get('name', '').strip()
+    selected_user_ids = request.POST.getlist('participants')
+
+    if not selected_user_ids:
+        messages.error(request, 'Ошибка: Вы не выбрали ни одного участника для беседы.')
+        return redirect('dashboard_admin:chat_list')
+
+    # Переводим ID в объекты пользователей
+    selected_users = list(User.objects.filter(id__in=selected_user_ids))
+
+    if chat_type == 'private':
+        # Твоя железная логика для ЛИЧНЫХ ЧАТОВ
+        other = selected_users[0] if selected_users else None
+        if other:
+            # Ищем существующий приватный чат между админом и этим пользователем
+            existing = ChatRoom.objects.filter(
+                room_type='private',
+                participants=request.user
+            ).filter(participants=other).distinct().first()
+            
+            if existing:
+                # Если админ ранее скрыл этот чат для себя — убираем из deleted_for
+                if existing.deleted_for.filter(id=request.user.id).exists():
+                    existing.deleted_for.remove(request.user)
+                return redirect('chat:chat_detail', room_id=existing.id)
+            
+            # Если чата не было — создаем строго по твоей схеме
+            room = ChatRoom.objects.create(room_type='private', created_by=request.user)
+            room.participants.add(request.user, other)
+            messages.success(request, f'Чат с пользователем успешно инициализирован.')
+            return redirect('chat:chat_detail', room_id=room.id)
+            
+    elif chat_type == 'group':
+        # Твоя логика для ГРУППОВЫХ ЧАТОВ
+        if not name:
+            messages.error(request, 'Ошибка: Укажите название группового чата.')
+            return redirect('dashboard_admin:chat_list')
+            
+        # Проверяем, нет ли уже группы с таким же названием у админа
+        existing = ChatRoom.objects.filter(
+            room_type='group',
+            name=name,
+            participants=request.user
+        ).first()
+        
+        if existing:
+            return redirect('chat:chat_detail', room_id=existing.id)
+            
+        # Создаем групповой чат
+        room = ChatRoom.objects.create(room_type='group', name=name, created_by=request.user)
+        # Добавляем выбранных людей + самого админа
+        room.participants.set(selected_users + [request.user])
+        messages.success(request, f'Групповой канал "{name}" успешно запущен.')
+        return redirect('chat:chat_detail', room_id=room.id)
+
+    return redirect('dashboard_admin:chat_list')

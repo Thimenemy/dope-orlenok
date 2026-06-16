@@ -1,0 +1,296 @@
+{% extends base_template %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        border: none;
+        border-radius: 12px;
+        background-color: #fff;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.01);
+        border: 1px solid #e2e8f0;
+    }
+    .form-select-custom, .form-control-custom {
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    .form-select-custom:focus, .form-control-custom:focus {
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+    .sort-btn {
+        background: none;
+        border: none;
+        color: #64748b;
+        font-size: 0.8rem;
+        padding: 0 4px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .sort-btn:hover, .sort-btn.active {
+        color: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom flex-wrap gap-3">
+    <div>
+        <h1 class="h3 fw-bold text-dark m-0">База клиентов (Родители)</h1>
+        <p class="text-muted small mb-0">CRM-модуль контроля плательщиков, учебной активности детей и сводных платежей по путевкам</p>
+    </div>
+    <div>
+        <a href="{% url 'dashboard_admin:parent_add' %}" class="btn btn-primary rounded-pill fw-semibold px-4 shadow-sm">
+            <i class="fas fa-user-plus me-1.5"></i> Добавить родителя
+        </a>
+    </div>
+</div>
+
+<!-- ПРОКАЧАННЫЙ БЛОК ИНТЕРАКТИВНЫХ ФИЛЬТРОВ (ГРУППЫ + ДАТЫ РЕГИСТРАЦИИ) -->
+<div class="card filter-card mb-4">
+    <div class="card-body p-3">
+        <div class="row align-items-end g-3">
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-semibold mb-1"><i class="fas fa-filter me-1"></i> Учебная группа</label>
+                <select id="groupFilter" class="form-select form-select-custom" onchange="filterParentsTable()">
+                    <option value="all">Все группы (Полный список)</option>
+                    <option value="none">Дети без зачисления в группы</option>
+                </select>
+            </div>
+            
+            <!-- НОВЫЕ ПОЛЯ ДЛЯ СОРТИРОВКИ ДАТЫ "ОТ" И "ДО" -->
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-semibold mb-1"><i class="far fa-calendar-alt me-1"></i> Регистрация от</label>
+                <input type="date" id="dateFromFilter" class="form-control form-control-custom" onchange="filterParentsTable()">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-semibold mb-1"><i class="far fa-calendar-alt me-1"></i> Регистрация до</label>
+                <input type="date" id="dateToFilter" class="form-control form-control-custom" onchange="filterParentsTable()">
+            </div>
+            
+            <div class="col-md-3 text-end text-muted small pb-2">
+                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3" onclick="resetAllCrmFilters()" title="Сбросить всё">
+                    <i class="fas fa-sync-alt me-1"></i> Сбросить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0 text-center" id="parentTable" style="background: #fff; font-size: 0.9rem;">
+            <thead class="table-light text-secondary small uppercase">
+                <tr>
+                    <th class="text-start ps-4" style="min-width: 180px;">
+                        Родитель (Плательщик)
+                        <button class="sort-btn" onclick="sortParentsTable('date', 'asc')" title="Старые первые"><i class="fas fa-sort-amount-down-alt"></i></button>
+                        <button class="sort-btn" onclick="sortParentsTable('date', 'desc')" title="Новые первые"><i class="fas fa-sort-amount-down"></i></button>
+                    </th>
+                    <th class="text-start">Дети и их учебные группы</th>
+                    
+                    <th>
+                        Завершено курсов
+                        <button class="sort-btn" onclick="sortParentsTable('courses', 'asc')" title="По возрастанию"><i class="fas fa-sort-amount-down-alt"></i></button>
+                        <button class="sort-btn" onclick="sortParentsTable('courses', 'desc')" title="По убыванию"><i class="fas fa-sort-amount-down"></i></button>
+                    </th>
+                    
+                    <th>
+                        Внесено средств
+                        <button class="sort-btn" onclick="sortParentsTable('money', 'asc')" title="По возрастанию"><i class="fas fa-sort-amount-down-alt"></i></button>
+                        <button class="sort-btn" onclick="sortParentsTable('money', 'desc')" title="По убыванию"><i class="fas fa-sort-amount-down"></i></button>
+                    </th>
+                    <th style="width: 120px;">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="parentTableBody">
+                {% for parent in parents %}
+                <!-- Чистый ISO формат даты (YYYY-MM-DD) для фильтра от/до -->
+                <tr class="parent-row" 
+                    data-money="{{ parent.total_paid_money|stringformat:'.2f' }}" 
+                    data-courses-count="{{ parent.completed_courses.count|default:0 }}"
+                    data-date-ts="{{ parent.date_joined|date:'U' }}"
+                    data-date-iso="{{ parent.date_joined|date:'Y-m-d' }}">
+                    
+                    <td class="text-start ps-4">
+                        <div class="fw-bold text-dark">{{ parent.last_name }} {{ parent.first_name }}</div>
+                        <div class="text-muted font-monospace" style="font-size: 0.775rem;">{{ parent.email }}</div>
+                        <div class="text-muted" style="font-size: 0.725rem; opacity: 0.8;">Рег: {{ parent.date_joined|date:"d.m.Y" }}</div>
+                    </td>
+                    
+                    <td class="text-start py-3">
+                        {% if parent.children_list %}
+                            {% for child in parent.children_list %}
+                                <div class="mb-1.5 p-1.5 bg-light-subtle border rounded-3 text-child-block" style="max-width: 320px; font-size: 0.825rem;">
+                                    <span class="fw-bold text-secondary"><i class="fas fa-child me-1"></i>{{ child.last_name }} {{ child.first_name }}</span>
+                                    
+                                    <div class="mt-1" style="font-size: 0.75rem;">
+                                        {% for m in parent.memberships %}
+                                            {% if m.child.id == child.id %}
+                                                <div class="text-dark fw-medium mb-1 group-name-tag" data-group-id="{{ m.group.id }}">
+                                                    <i class="fas fa-layer-group text-primary me-1"></i>Группа: <strong class="raw-group-name">{{ m.group.name }}</strong> 
+                                                    <span class="text-muted d-block style-joined" style="font-size: 0.7rem; padding-left: 14px;">Вступил: {{ m.added_at|date:"d.m.Y" }}</span>
+                                                </div>
+                                            {% endif %}
+                                        {% empty %}
+                                            <span class="text-muted italic small">Не зачислен в группы</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted italic small">Дети не добавлены</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td>
+                        {% if parent.completed_courses %}
+                            <div class="text-start mx-auto" style="max-width: 150px; font-size: 0.775rem;">
+                                {% for report in parent.completed_courses %}
+                                    <div class="text-success fw-semibold mb-0.5" title="Выпускник">
+                                        <i class="fas fa-graduation-cap me-1"></i>{{ report.group.course.name }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td>
+                        <span class="fw-bold {% if parent.total_paid_money > 0 %}text-success{% else %}text-secondary{% endif %}" style="font-size: 0.95rem;">
+                            {{ parent.total_paid_money|floatformat:2 }} ₽
+                        </span>
+                    </td>
+                    
+                    <td>
+                        <div class="d-flex justify-content-center gap-1.5">
+                            <a href="{% url 'dashboard_admin:parent_edit' parent.id %}" class="btn btn-sm btn-outline-primary px-2.5 rounded-pill" title="Редактировать клиента">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{% url 'dashboard_admin:parent_delete' parent.id %}" method="post" class="m-0" 
+                                  onsubmit="return confirm('Вы уверены, что хотите полностью удалить аккаунт родителя {{ parent.get_full_name }}?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger px-2.5 rounded-pill" title="Удалить">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">База зарегистрированных родителей пуста.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const filterSelect = document.getElementById('groupFilter');
+        const groupsFound = {};
+
+        document.querySelectorAll('.group-name-tag').forEach(tag => {
+            const groupId = tag.getAttribute('data-group-id');
+            const groupName = tag.querySelector('.raw-group-name').innerText.trim();
+            
+            if (groupId && !groupsFound[groupId]) {
+                groupsFound[groupId] = groupName;
+                const option = document.createElement('option');
+                option.value = groupId;
+                option.innerText = `Группа: ${groupName}`;
+                filterSelect.appendChild(option);
+            }
+        });
+    });
+
+    // ОБЪЕДИНЕННАЯ СИСТЕМНАЯ ФУНКЦИЯ КОМПЛЕКСНОЙ ФИЛЬТРАЦИИ (ГРУППЫ + ДАТЫ ОТ И ДО)
+    function filterParentsTable() {
+        const selectedGroup = document.getElementById('groupFilter').value;
+        const dateFrom = document.getElementById('dateFromFilter').value; // ГГГГ-ММ-ДД
+        const dateTo = document.getElementById('dateToFilter').value;     // ГГГГ-ММ-ДД
+        
+        const rows = document.querySelectorAll('.parent-row');
+
+        rows.forEach(row => {
+            const rowIsoDate = row.getAttribute('data-date-iso');
+            
+            // 1. Проверяем фильтр по группе
+            let matchesGroup = false;
+            if (selectedGroup === 'all') {
+                matchesGroup = true;
+            } else if (selectedGroup === 'none') {
+                matchesGroup = !row.querySelector('.group-name-tag');
+            } else {
+                matchesGroup = !!row.querySelector(`.group-name-tag[data-group-id="${selectedGroup}"]`);
+            }
+
+            // 2. Проверяем фильтр даты "От"
+            let matchesDateFrom = true;
+            if (dateFrom && rowIsoDate) {
+                matchesDateFrom = (rowIsoDate >= dateFrom);
+            }
+
+            // 3. Проверяем фильтр даты "До"
+            let matchesDateTo = true;
+            if (dateTo && rowIsoDate) {
+                matchesDateTo = (rowIsoDate <= dateTo);
+            }
+
+            // Итоговый вердикт: строка отображается, только если прошла ВСЕ три фильтра
+            if (matchesGroup && matchesDateFrom && matchesDateTo) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // ФУНКЦИЯ СБРОСА ВСЕХ CRM-ФИЛЬТРОВ
+    function resetAllCrmFilters() {
+        document.getElementById('groupFilter').value = 'all';
+        document.getElementById('dateFromFilter').value = '';
+        document.getElementById('dateToFilter').value = '';
+        filterParentsTable();
+    }
+
+    // ЖЕЛЕЗОБЕТОННАЯ ИСПРАВЛЕННАЯ СОРТИРОВКА (РАБОТАЕТ БЕСКОНЕЧНОЕ КОЛИЧЕСТВО РАЗ)
+    function sortParentsTable(type, direction) {
+        const tbody = document.getElementById('parentTableBody');
+        const rows = Array.from(tbody.querySelectorAll('.parent-row'));
+
+        document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        rows.sort((rowA, rowB) => {
+            let valA, valB;
+
+            if (type === 'money') {
+                valA = parseFloat(rowA.getAttribute('data-money')) || 0;
+                valB = parseFloat(rowB.getAttribute('data-money')) || 0;
+            } else if (type === 'courses') {
+                valA = parseInt(rowA.getAttribute('data-courses-count')) || 0;
+                valB = parseInt(rowB.getAttribute('data-courses-count')) || 0;
+            } else if (type === 'date') {
+                valA = parseInt(rowA.getAttribute('data-date-ts')) || 0;
+                valB = parseInt(rowB.getAttribute('data-date-ts')) || 0;
+            }
+
+            if (direction === 'asc') {
+                return valA - valB;
+            } else {
+                return valB - valA; // ТУТ БЫЛА ОПЕЧАТКА rowB, ТЕПЕРЬ СТРОГО ПЕРЕМЕННАЯ valB!
+            }
+        });
+
+        // Перерисовываем строки в DOM
+        rows.forEach(row => tbody.appendChild(row));
+    }
+</script>
+{% endblock %}

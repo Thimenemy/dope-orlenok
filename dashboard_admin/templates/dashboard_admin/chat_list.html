@@ -1,0 +1,203 @@
+{% extends base_template %}
+
+{% block extra_css %}
+<style>
+    .chat-item-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: #fff;
+    }
+    .chat-item-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(15, 23, 42, 0.05);
+    }
+    .user-scroll-zone {
+        max-height: 180px;
+        overflow-y: auto;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f8fafc;
+    }
+    .form-check-label {
+        font-size: 0.875rem;
+        color: #334155;
+        cursor: pointer;
+    }
+    .badge-unread {
+        background-color: #ef4444;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 50%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-4 border-bottom flex-wrap gap-3">
+    <div>
+        <h1 class="h3 fw-bold text-dark m-0">Центр корпоративной связи</h1>
+        <p class="text-muted small mb-0">Кабинет обмена сообщениями администратора лагеря МУ ОЦ «Орлёнок»</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary rounded-pill fw-semibold px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#newChatModal">
+            <i class="fas fa-plus-circle me-1.5"></i> Создать диалог / Группу
+        </button>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for data in rooms_data %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card chat-item-card p-3 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="fw-bold text-dark m-0 text-truncate" style="max-width: 75%; font-size: 1.05rem;" title="{{ data.display_name }}">
+                        {{ data.display_name }}
+                    </h5>
+                    
+                    <div class="d-flex align-items-center gap-2">
+                        {% if data.unread_count > 0 %}
+                            <span class="badge-unread" title="Непрочитанных сообщений">{{ data.unread_count }}</span>
+                        {% endif %}
+                        
+                        {% if data.room.room_type == 'group' %}
+                            <span class="badge bg-primary-subtle text-primary rounded-3 small fw-bold px-2 py-1" style="font-size: 0.7rem;">Группа</span>
+                        {% else %}
+                            <span class="badge bg-success-subtle text-success rounded-3 small fw-bold px-2 py-1" style="font-size: 0.7rem;">Личный</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <p class="text-muted small mb-3 text-truncate" style="font-size: 0.8rem;">
+                    <i class="fas fa-users me-1 opacity-75"></i>
+                    {% for u in data.room.participants.all %}
+                        {{ u.first_name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+
+            <div class="pt-2 border-top d-flex justify-content-between align-items-center">
+                <span class="text-muted" style="font-size: 0.75rem;">Активность: {{ data.room.updated_at|date:"d.m H:i" }}</span>
+                <a href="{% url 'chat:chat_detail' data.room.id %}?from_admin=1" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold" style="font-size: 0.8rem;">
+                    Открыть чат <i class="fas fa-arrow-right ms-1" style="font-size: 0.7rem;"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted italic">
+        <i class="far fa-comments fa-3x d-block mb-3 opacity-50"></i>
+        У вас пока нет активных чатов. Нажмите верхнюю кнопку, чтобы начать переписку с родителями или преподавателями.
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="newChatModal" tabindex="-1" aria-labelledby="newChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold text-dark" id="newChatModalLabel">
+                    <i class="fas fa-edit text-success me-2"></i>Инициализировать переписку
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form action="{% url 'dashboard_admin:chat_create' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body px-4 py-3">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary fw-bold text-uppercase">Тип чата</label>
+                        <select class="form-select form-select-custom" name="chat_type" id="chatTypeSelect" onchange="toggleFormMode()">
+                            <option value="private" selected>Личный диалог (Один на один)</option>
+                            <option value="group">Групповой чат / Канал рассылки</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3 d-none" id="groupNameWrapper">
+                        <label class="form-label small text-secondary fw-bold text-uppercase">Название группы</label>
+                        <input type="text" class="form-control form-control-custom" name="name" placeholder="Например: Сводный чат бухгалтерии">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary fw-bold text-uppercase"><i class="fas fa-user-tie me-1"></i>Служебный персонал центра</label>
+                        <div class="user-scroll-zone">
+                            {% for u in staff_users %}
+                            <div class="form-check mb-1.5 d-flex align-items-center">
+                                <input class="form-check-input user-cb me-2" type="checkbox" name="participants" value="{{ u.id }}" id="u_{{ u.id }}" onchange="validateSelection(this)">
+                                <label class="form-check-label" for="u_{{ u.id }}">
+                                    <strong>{{ u.last_name }} {{ u.first_name }}</strong> <span class="text-muted" style="font-size: 0.75rem;">({{ u.groups.first.name|default:"Сотрудник" }})</span>
+                                </label>
+                            </div>
+                            {% empty %}
+                            <div class="text-muted small italic">Сотрудники не зарегистрированы.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary fw-bold text-uppercase"><i class="fas fa-users me-1"></i>Родители (Клиенты)</label>
+                        <div class="user-scroll-zone">
+                            {% for u in parent_users %}
+                            <div class="form-check mb-1.5 d-flex align-items-center">
+                                <input class="form-check-input user-cb me-2" type="checkbox" name="participants" value="{{ u.id }}" id="u_{{ u.id }}" onchange="validateSelection(this)">
+                                <label class="form-check-label" for="u_{{ u.id }}">
+                                    <strong>{{ u.last_name }} {{ u.first_name }}</strong> <span class="text-muted" style="font-size: 0.75rem;">({{ u.email }})</span>
+                                </label>
+                            </div>
+                            {% empty %}
+                            <div class="text-muted small italic">Родители в базе данных отсутствуют.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 rounded-pill shadow-sm fw-semibold">
+                        <i class="fas fa-comments me-1.5"></i> Открыть комнату
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Показываем/скрываем текстовое поле названия группы в зависимости от выбора
+    function toggleFormMode() {
+        const chatType = document.getElementById('chatTypeSelect').value;
+        const groupWrapper = document.getElementById('groupNameWrapper');
+        
+        if (chatType === 'group') {
+            groupWrapper.classList.remove('d-none');
+        } else {
+            groupWrapper.classList.add('d-none');
+            // Если переключились на приватный — сбрасываем лишние галочки
+            let keptOne = false;
+            document.querySelectorAll('.user-cb').forEach(cb => {
+                if (cb.checked) {
+                    if (!keptOne) keptOne = true;
+                    else cb.checked = false;
+                }
+            });
+        }
+    }
+
+    // Если тип чата "Личный", функция гасит остальные галочки при клике на новую
+    function validateSelection(clickedCb) {
+        const chatType = document.getElementById('chatTypeSelect').value;
+        if (chatType === 'private' && clickedCb.checked) {
+            document.querySelectorAll('.user-cb').forEach(cb => {
+                if (cb !== clickedCb) cb.checked = false;
+            });
+        }
+    }
+</script>
+{% endblock %}

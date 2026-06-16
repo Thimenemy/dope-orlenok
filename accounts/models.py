@@ -41,3 +41,15 @@ class Child(models.Model):
 
     def __str__(self):
         return f"{self.last_name} {self.first_name} {self.middle_name}".strip()
+    
+class RegistrationCode(models.Model):
+    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name='registration_codes')
+    code = models.CharField(max_length=20, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Метод проверки: живой ли еще код (2 минуты)
+    def is_valid(self):
+        return timezone.now() <= self.created_at + datetime.timedelta(minutes=2)
+
+    def __str__(self):
+        return f"Код {self.code} для родителя {self.parent.username}"
