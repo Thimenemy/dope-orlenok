@@ -48,8 +48,8 @@
         background-color: #f8fafc;
     }
     .table-ledger tfoot td {
-        padding: 14px 12px;
-        font-size: 1rem;
+        padding: 10px 12px;
+        font-size: 0.95rem;
     }
     
     .badge-fin { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; }
@@ -90,7 +90,7 @@
                     <option value="">Все показатели (Полный реестр)</option>
                     <option value="profit" {% if selected_financial_type == 'profit' %}selected{% endif %}>Прибыль (Оплачено)</option>
                     <option value="debt" {% if selected_financial_type == 'debt' %}selected{% endif %}>Задолженность (Ожидает оплаты)</option>
-                    <option value="rejected" {% if selected_financial_type == 'rejected' %}selected{% endif %}>Удержание (Отказы/Отклонено)</option>
+                    <option value="rejected" {% if selected_financial_type == 'rejected' %}selected{% endif %}>Потери (Отказы/Отклонено)</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -124,7 +124,7 @@
 
 <div class="report-table-container">
     <div class="table-responsive">
-        <table class="table table-ledger align-middle mb-0 text-center">
+        <table class="table table-ledger align-middle mb-0 text-center" id="ledgerTable">
             <thead>
                 <tr>
                     <th style="width: 140px;">Дата операции</th>
@@ -137,7 +137,7 @@
             </thead>
             <tbody>
                 {% for enrollment in enrollments %}
-                <tr>
+                <tr class="ledger-row" data-status="{% if enrollment.status == 'paid' %}profit{% elif enrollment.status == 'awaiting_payment' or enrollment.status == 'payment_review' %}debt{% elif enrollment.status == 'rejected' %}rejected{% endif %}">
                     <td class="text-muted small">
                         {{ enrollment.updated_at|date:"d.m.Y" }}
                         <span class="d-block text-muted opacity-75" style="font-size: 0.75rem;">{{ enrollment.updated_at|date:"H:i" }}</span>
@@ -151,12 +151,14 @@
                         {% elif enrollment.status == 'awaiting_payment' or enrollment.status == 'payment_review' %}
                             <span class="badge-fin badge-debt">Задолженность</span>
                         {% elif enrollment.status == 'rejected' %}
-                            <span class="badge-fin badge-rejected">Удержание</span>
+                            <span class="badge-fin badge-rejected">Потери</span>
                         {% else %}
                             <span class="badge-fin bg-secondary text-white">Прочее</span>
                         {% endif %}
                     </td>
-                    <td class="text-end pe-4 fw-bold text-dark">{{ enrollment.price|floatformat:2 }} ₽</td>
+                    <td class="text-end pe-4 fw-bold text-dark raw-price-cell">
+                        {% if enrollment.price > 0 %}{{ enrollment.price }}{% else %}{{ enrollment.course.price }}{% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -167,11 +169,20 @@
                 </tr>
                 {% endfor %}
             </tbody>
+            
             {% if enrollments %}
             <tfoot class="table-light border-top border-2">
-                <tr class="fw-bold text-dark">
-                    <td colspan="5" class="text-start ps-4 text-uppercase tracking-wider">Итого по ведомости:</td>
-                    <td class="text-end pe-4 text-success fs-5" style="color: #059669 !important;">{{ total_sum|floatformat:2 }} ₽</td>
+                <tr id="row-total-profit" class="fw-medium text-secondary">
+                    <td colspan="5" class="text-start ps-4 text-uppercase" style="font-size: 0.85rem;"><i class="fas fa-check-circle text-success me-2"></i>Итого фактически исполнено (Валовая прибыль):</td>
+                    <td class="text-end pe-4 text-success fw-bold" id="val-total-profit">0.00 ₽</td>
+                </tr>
+                <tr id="row-total-debt" class="fw-medium text-secondary">
+                    <td colspan="5" class="text-start ps-4 text-uppercase" style="font-size: 0.85rem;"><i class="fas fa-clock text-warning me-2"></i>Итого объем дебиторской задолженности:</td>
+                    <td class="text-end pe-4 text-warning fw-bold" id="val-total-debt">0.00 ₽</td>
+                </tr>
+                <tr id="row-total-rejected" class="fw-medium text-secondary">
+                    <td colspan="5" class="text-start ps-4 text-uppercase" style="font-size: 0.85rem;"><i class="fas fa-times-circle text-danger me-2"></i>Итого объем потенциальных потерь (Упущенная выгода):</td>
+                    <td class="text-end pe-4 text-danger fw-bold" id="val-total-rejected">0.00 ₽</td>
                 </tr>
             </tfoot>
             {% endif %}
@@ -196,7 +207,7 @@
                         <option value="" selected disabled>-- Не выбрано --</option>
                         <option value="profit_doc">Ведомость учета поступлений родительской платы (Прибыль)</option>
                         <option value="debt_doc">Реестр дебиторской задолженности (Задолженность)</option>
-                        <option value="rejected_doc">Акт сверки аннулированных заявок и возвратов (Удержание)</option>
+                        <option value="rejected_doc">Акт учета упущенной выгоды и аннулированных заявок (Потери)</option>
                     </select>
                 </div>
 
@@ -251,20 +262,16 @@
                     </tr>
                     {% endfor %}
                     <tr style="font-weight: bold; background: #fafafa;">
-                        <td colspan="4" style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-transform: uppercase;">Итого исполнено плановых назначений (Валовая прибыль):</td>
-                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #059669;">{{ total_sum|floatformat:2 }}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-transform: uppercase;">Итого зачислено прибыли (По ведомости):</td>
+                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #059669;" class="print-total-profit">{{ total_sum|floatformat:2 }}</td>
                     </tr>
                 </tbody>
             </table>
 
-            <p style="font-size: 10pt; margin-top: 30px; text-align: justify; line-height: 1.4;">
-                * Настоящая ведомость сформирована автоматически на основании данных транзакций, прошедших полную банковскую и модерационную очистку в ИС МУ ОЦ «Орлёнок».
-            </p>
             <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 11pt;">
                 <div>Директор ОЦ «Орлёнок»: ____________________ / Рогов А.В. /</div>
                 <div>Главный бухгалтер: ____________________ / {{ user.get_full_name|default:user.username }} /</div>
             </div>
-            <div style="margin-top: 35px; font-size: 10pt; font-weight: bold;">М.П.</div>
         </div>
     </div>
 
@@ -303,14 +310,11 @@
                     {% endfor %}
                     <tr style="font-weight: bold; background: #fafafa;">
                         <td colspan="4" style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-transform: uppercase;">Итого объем дебиторской недоимки:</td>
-                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #d97706;">{{ total_sum|floatformat:2 }}</td>
+                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #d97706;" class="print-total-debt">{{ total_sum|floatformat:2 }}</td>
                     </tr>
                 </tbody>
             </table>
 
-            <p style="font-size: 10pt; margin-top: 30px; text-align: justify; line-height: 1.4;">
-                * Настоящий реестр сформирован для внутренней аналитики финансовой службы с целью оперативного уведомления должников и планирования бюджета до начала сборов.
-            </p>
             <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 11pt;">
                 <div>Финансовый аудитор: ____________________ / Колесникова И.А. /</div>
                 <div>Главный бухгалтер: ____________________ / {{ user.get_full_name|default:user.username }} /</div>
@@ -320,11 +324,11 @@
 
     <div id="template-rejected_doc">
         <div style="padding: 20px; font-family: 'Times New Roman', serif; color: #000; background: #fff;">
-            <div style="text-align: right; font-size: 10pt; font-style: italic;">Унифицированная forma по ОКУД 0503737</div>
+            <div style="text-align: right; font-size: 10pt; font-style: italic;">Унифицированная форма по ОКУД 0503737</div>
             <div style="text-align: center; font-size: 11pt; font-weight: bold;">МУНИЦИПАЛЬНОЕ УЧРЕЖДЕНИЕ ОЗДОРОВИТЕЛЬНЫЙ ЦЕНТР «ОРЛЁНОК»</div>
             
             <div style="text-align: center; font-weight: bold; font-size: 13pt; margin-top: 20px; margin-bottom: 20px; text-transform: uppercase;">
-                АКТ СВЕРКИ АННУЛИРОВАННЫХ ОПЕРАЦИЙ И ВНУТРЕННИХ УДЕРЖАНИЙ БЮДЖЕТА<br>
+                АКТ УЧЕТА УПУЩЕННОЙ ВЫГОДЫ И АННУЛИРОВАННЫХ ОПЕРАЦИЙ ЦЕНТРА<br>
                 <span style="font-size: 11pt; font-weight: normal; text-transform: none;">
                     Период выборки: {% if filter_date_from %}с {{ filter_date_from }}{% else %}начала учета{% endif %} {% if filter_date_to %}по {{ filter_date_to }}{% else %}наст. время{% endif %}<br>
                     Фильтр программы: {{ selected_course_name }}
@@ -334,26 +338,29 @@
             <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                 <thead>
                     <tr style="background: #f5f5f5;">
-                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: center; width: 100px;">Дата</th>
-                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left; width: 150px;">Заявитель</th>
-                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left;">Курс</th>
-                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left;">Мотивированная причина отмены (из БД ИС)</th>
-                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: right; width: 120px;">Сумма потерь</th>
+                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: center; width: 100px;">Дата отмены</th>
+                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left; width: 150px;">Заявитель (Родитель)</th>
+                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left;">Программа</th>
+                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: left;">Официальное основание отклонения заявки (из БД)</th>
+                        <th style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: right; width: 120px;">Финансовые потери</th>
                     </tr>
                 </thead>
                 <tbody>
+                    
                     {% for enrollment in enrollments %}
                     <tr>
                         <td style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: center;">{{ enrollment.updated_at|date:"d.m.Y" }}</td>
                         <td style="border: 1px solid #000; padding: 6px; font-size: 10pt;">{{ enrollment.parent_last_name }} {{ enrollment.parent_first_name }}</td>
                         <td style="border: 1px solid #000; padding: 6px; font-size: 10pt;">{{ enrollment.course.name }}</td>
                         <td style="border: 1px solid #000; padding: 6px; font-size: 10pt; font-style: italic; color: #555;">{{ enrollment.comment|default:"Отказ/Аннулирование по инициативе родителя" }}</td>
-                        <td style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: right; font-weight: bold;">{{ enrollment.price|floatformat:2 }}</td>
+                        <td style="border: 1px solid #000; padding: 6px; font-size: 10pt; text-align: right; font-weight: bold;">
+                            {% if enrollment.price > 0 %}{{ enrollment.price|floatformat:2 }}{% else %}{{ enrollment.course.price|floatformat:2 }}{% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                     <tr style="font-weight: bold; background: #fafafa;">
-                        <td colspan="4" style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-transform: uppercase;">Итого сумма удержаний/операционного брака:</td>
-                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #991b1b;">{{ total_sum|floatformat:2 }}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-transform: uppercase;">Итого сумма совокупных финансовых потерь:</td>
+                        <td style="border: 1px solid #000; padding: 8px; font-size: 11pt; text-align: right; color: #991b1b;" class="print-total-rejected">{{ total_sum|floatformat:2 }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -370,11 +377,45 @@
 
 {% block extra_js %}
 <script>
-    // Развернутые тексты обоснований документов для твоей ВКР
+    // Сценарий динамического подсчета итоговых сумм прямо из таблицы
+    document.addEventListener("DOMContentLoaded", function() {
+        let totalProfit = 0;
+        let totalDebt = 0;
+        let totalRejected = 0;
+
+        // Пробегаем циклом по всем строкам таблицы на экране
+        document.querySelectorAll('.ledger-row').forEach(row => {
+            const status = row.getAttribute('data-status');
+            const priceText = row.querySelector('.raw-price-cell').innerText.replace(',', '.').trim();
+            const priceValue = parseFloat(priceText) || 0;
+
+            if (status === 'profit') {
+                totalProfit += priceValue;
+            } else if (status === 'debt') {
+                totalDebt += priceValue;
+            } else if (status === 'rejected') {
+                totalRejected += priceValue;
+            }
+        });
+
+        // Форматируем в красивую денежную строку
+        const formatter = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // Закидываем итоговые суммы в подвал таблицы
+        document.getElementById('val-total-profit').innerText = formatter.format(totalProfit) + ' ₽';
+        document.getElementById('val-total-debt').innerText = formatter.format(totalDebt) + ' ₽';
+        document.getElementById('val-total-rejected').innerText = formatter.format(totalRejected) + ' ₽';
+
+        // Умная синхронизация: подставляем правильные суммы в печатные ГОСТ-бланки перед выводом на принтер
+        document.querySelectorAll('.print-total-profit').forEach(el => el.innerText = formatter.format(totalProfit) + ' руб.');
+        document.querySelectorAll('.print-total-debt').forEach(el => el.innerText = formatter.format(totalDebt) + ' руб.');
+        document.querySelectorAll('.print-total-rejected').forEach(el => el.innerText = formatter.format(totalRejected) + ' руб.');
+    });
+
     const docDescriptions = {
         'profit_doc': 'Данный документ предназначен для верификации и фиксации фактически поступивших денежных средств на лицевой счет МУ ОЦ «Орлёнок» от физических лиц за оказание платных дополнительных услуг за указанный отчетный период. Формирует доходную часть баланса.',
         'debt_doc': 'Данный документ предназначен для выявления недоимок и учета дебиторской задолженности физических лиц перед бюджетом центра. Используется для сводного финансового планирования расходов и сборов перед стартом лагерных смен.',
-        'rejected_doc': 'Данный документ является официальным реестром операционных удержаний и брака. Отражает объемы аннулированных или отклоненных заявок с фиксацией мотивированной причины отказа, сохраненной в базе данных информационной системы.'
+        'rejected_doc': 'Данный документ является официальным регистром учета упущенной коммерческой выгоды и операционных потерь. Отражает объемы финансовых средств, недополученных центром из-за мотивированных отказов, аннулирования договоров, а также из-за срабатывания автоматических блокировок при стопроцентном заполнении лимитов учебных мест.'
     };
 
     function showDocDescription() {
@@ -394,18 +435,13 @@
         }
     }
 
-    // Ювелирная печать строго отфильтрованных строк в изолированном окне браузера
     function generateAndPrintDoc() {
         const selectedValue = document.getElementById('docTypeSelect').value;
         if (!selectedValue) return;
 
-        // Забираем HTML-код готового бланка, который Джанго наполнил строго отфильтрованными строками
         const printContent = document.getElementById(`template-${selectedValue}`).innerHTML;
-        
-        // Создаем чистое, новое пустое окно браузера
         const printWindow = window.open('', '_blank', 'width=950,height=850');
         
-        // Пишем туда бланк и вызываем принтер
         printWindow.document.write('<html><head><title>Печать финансового отчета по ОКУД 0503737</title></head><body style="margin:0;">');
         printWindow.document.write(printContent);
         printWindow.document.write('</body></html>');
@@ -413,10 +449,9 @@
         printWindow.document.close();
         printWindow.focus();
         
-        // Даем браузеру долю секунды на отрисовку структуры
         setTimeout(() => {
             printWindow.print();
-            printWindow.close(); // Самозакрываем окно после распечатки
+            printWindow.close();
         }, 300);
     }
 </script>

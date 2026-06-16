@@ -79,7 +79,7 @@
                         </div>
                         
                         <div class="slots-progress-container" 
-                             data-total="{{ course.slots_per_group }}" 
+                             data-total="{{ course.get_total_slots }}" 
                              data-paid="{{ course.get_occupied_slots_count }}" 
                              data-reserve="{{ course.get_reserve_slots_count }}">
                             
@@ -91,7 +91,7 @@
                             <div class="slots-legend">
                                 <span title="Оплачено"><span class="dot-indicator" style="background-color: #10b981;"></span>{{ course.get_occupied_slots_count }}</span>
                                 <span title="В брони"><span class="dot-indicator" style="background-color: #f59e0b;"></span>{{ course.get_reserve_slots_count }}</span>
-                                <span class="text-dark fw-bold" title="Всего занято мест">Σ {{ course.get_occupied_slots_count|add:course.get_reserve_slots_count }}</span>
+                                <span class="text-dark fw-bold" title="Всего занято мест из общего количества">Σ {{ course.get_occupied_slots_count|add:course.get_reserve_slots_count }}</span>
                             </div>
                         </div>
                     </td>
@@ -122,7 +122,7 @@
 
 {% block extra_js %}
 <script>
-    // Рассчитываем ширину полосок прогресс-бара на стороне браузера (клиентская часть)
+    // Рассчитываем ширину полосок прогресс-бара на стороне браузера относительно ОБЩЕГО количества мест курса
     document.addEventListener("DOMContentLoaded", function() {
         const containers = document.querySelectorAll('.slots-progress-container');
         
@@ -135,7 +135,6 @@
                 const paidPercent = (paid / total) * 100;
                 const reservePercent = (reserve / total) * 100;
                 
-                // Находим элементы полосок внутри контейнера и меняем им ширину в %
                 const paidBar = container.querySelector('.progress-segment-paid');
                 const reserveBar = container.querySelector('.progress-segment-reserve');
                 
