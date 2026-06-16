@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-md-6">
+        <div class="card shadow border-0 p-4" style="border-radius: 16px; background: #fff;">
+            <div class="text-center mb-4">
+                <span class="badge bg-success-subtle text-success px-3 py-1.5 rounded-pill fw-bold mb-2">Код подтвержден</span>
+                <h3 class="fw-bold text-dark m-0">Привет, {{ child.first_name }}!</h3>
+                <p class="text-muted small mt-1">Родитель успешно подтвердил твой профиль. Задай параметры для входа в систему:</p>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label small text-secondary fw-bold">Email</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>{% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-secondary fw-bold">Пароль</label>
+                    {{ form.password1 }}
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small text-secondary fw-bold">Повтор пароля</label>
+                    {{ form.password2 }}
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger small py-2 rounded-3 mb-3">{{ form.non_field_errors.0 }}</div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary w-100 py-2.5 rounded-pill fw-bold shadow-sm">
+                    <i class="fas fa-rocket me-1.5"></i> Завершить настройку и войти
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

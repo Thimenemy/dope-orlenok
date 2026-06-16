@@ -146,26 +146,37 @@
                     <a href="{% url 'accounts:add_child' %}" class="text-primary small fw-bold text-decoration-none" title="Добавить ребёнка">
                         <i class="fas fa-plus-circle fs-5"></i>
                     </a>
-                </div>
-                
+                </div>                
                 <div class="d-flex flex-column gap-2">
                     {% if children %}
                         {% for child in children %}
-                        <div class="child-list-card d-flex justify-content-between align-items-center">
-                            <div style="min-width: 0;">
-                                <div class="fw-bold text-dark text-truncate" style="font-size: 0.875rem;">{{ child.last_name }} {{ child.first_name }}</div>
-                                <small class="text-muted" style="font-size: 0.75rem;"><i class="far fa-calendar-alt me-1"></i>{{ child.birth_date|date:"d.m.Y" }}</small>
-                                <a href="{% url 'accounts:edit_child' child.id %}" class="text-muted ms-2 hover-opacity-100" title="Редактировать">
-                                    <i class="fas fa-edit small"></i>
-                                </a>
+                        <div class="child-list-card d-flex flex-column gap-2" style="background-color: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 8px;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div style="min-width: 0;">
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.875rem;">{{ child.last_name }} {{ child.first_name }}</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;"><i class="far fa-calendar-alt me-1"></i>{{ child.birth_date|date:"d.m.Y" }}</small>
+                                    <a href="{% url 'accounts:edit_child' child.id %}" class="text-muted ms-2 hover-opacity-100" title="Редактировать"><i class="fas fa-edit small"></i></a>
+                                </div>
+                                <form method="post" action="{% url 'accounts:delete_child' child.id %}" onsubmit="return confirm('Удалить ребёнка? Все связанные заявки останутся, но ребёнок будет удалён из списка.')" class="m-0 ms-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm text-danger p-1 bg-transparent border-0 opacity-50 hover-opacity-100"><i class="fas fa-trash-alt"></i></button>
+                                </form>
                             </div>
-                            <form method="post" action="{% url 'accounts:delete_child' child.id %}" 
-                                  onsubmit="return confirm('Удалить ребёнка? Все связанные заявки останутся, но ребёнок будет удалён из списка.')" class="m-0 ms-2">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm text-danger p-1 bg-transparent border-0 opacity-50 hover-opacity-100">
-                                    <i class="fas fa-trash-alt"></i>
+
+                            <!-- ИНТЕРАКТИВНЫЙ БЛОК ГЕНЕРАЦИИ КОДА ДЛЯ ДАННОГО РЕБЕНКА -->
+                            <div class="border-top pt-2 mt-1">
+                                <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2.5 rounded-pill w-100 text-start d-flex justify-content-between align-items-center" 
+                                        id="btn-gen-{{ child.id }}" onclick="getChildRegistrationCode('{{ child.id }}')" style="font-size: 0.75rem; font-weight: 600;">
+                                    <span><i class="fas fa-key me-1"></i> Код для регистрации</span>
+                                    <i class="fas fa-sync-alt opacity-75"></i>
                                 </button>
-                            </form>
+                                
+                                <!-- Сюда выводится сгенерированный код именно этого ребенка -->
+                                <div id="code-area-{{ child.id }}" class="d-none mt-2 p-2 bg-light rounded border text-center position-relative">
+                                    <span class="font-monospace fw-bold text-dark d-block mb-1" id="lbl-code-{{ child.id }}" style="letter-spacing: 1px; font-size: 1.1rem;">XXXXXXXXXXX</span>
+                                    <small class="text-danger fw-bold d-block" id="lbl-timer-{{ child.id }}" style="font-size: 0.7rem;"><i class="far fa-clock me-1"></i>02:00</small>
+                                </div>
+                            </div>
                         </div>
                         {% endfor %}
                     {% else %}
@@ -673,6 +684,61 @@
                 emptyAlert.style.display = 'none';
             }
         }
+    }
+</script>
+<!-- В самом низу шаблона dashboard.html в блоке скриптов -->
+<script>
+    let activeChildTimers = {};
+
+    function getChildRegistrationCode(childId) {
+        const btn = document.getElementById(`btn-gen-${childId}`);
+        const displayArea = document.getElementById(`code-area-${childId}`);
+        const lblCode = document.getElementById(`lbl-code-${childId}`);
+        const lblTimer = document.getElementById(`lbl-timer-${childId}`);
+
+        btn.disabled = true;
+
+        // Передаем точный child_id на бэкенд Джанго через GET параметр
+        fetch(`{% url 'accounts:generate_child_code' %}?child_id=${childId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayArea.classList.remove('d-none');
+                    lblCode.innerText = data.code;
+                    lblCode.classList.remove('text-muted');
+
+                    // Если для этого ребенка уже тикал таймер — сбрасываем его
+                    if (activeChildTimers[childId]) clearInterval(activeChildTimers[childId]);
+
+                    let timeLeft = data.expires_in;
+
+                    activeChildTimers[childId] = setInterval(() => {
+                        timeLeft--;
+                        
+                        let minutes = Math.floor(timeLeft / 60);
+                        let seconds = timeLeft % 60;
+                        if (seconds < 10) seconds = '0' + seconds;
+
+                        lblTimer.innerHTML = `<i class="far fa-clock me-1"></i>0${minutes}:${seconds}`;
+
+                        if (timeLeft <= 0) {
+                            clearInterval(activeChildTimers[childId]);
+                            lblCode.innerText = "ИСТЕК";
+                            lblCode.classList.add('text-muted');
+                            lblTimer.innerText = "Код больше не действителен";
+                            btn.disabled = false;
+                        }
+                    }, 1000);
+
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось сгенерировать код'));
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.disabled = false;
+            });
     }
 </script>
 {% endblock %}

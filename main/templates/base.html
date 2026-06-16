@@ -130,12 +130,15 @@
                                 </form>
                             </li>
                         {% else %}
-                            <li class="nav-item">
-                                <a class="nav-link btn-nav-login" href="{% url 'accounts:login' %}">Вход</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link btn-nav-reg" href="{% url 'accounts:register' %}">Регистрация</a>
-                            </li>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- НОВАЯ КНОПКА ДЛЯ ДЕТЕЙ -->
+                                <a href="{% url 'accounts:child_check_code' %}" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold" style="border-width: 2px;">
+                                    <i class="fas fa-child me-1"></i> Войти как ребёнок
+                                </a>
+                                
+                                <a href="{% url 'accounts:login' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Войти</a>
+                                <a href="{% url 'accounts:register' %}" class="btn btn-sm btn-primary rounded-pill px-3">Регистрация</a>
+                            </div>
                         {% endif %}
                     </ul>
                 </div>

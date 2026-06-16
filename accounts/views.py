@@ -8,11 +8,13 @@ from .models import Child
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from enrollment.models import Enrollment  # Прямой импорт из твоей структуры
+from .models import Profile, Child, RegistrationCode
+
 
 class CustomLoginView(LoginView):
     template_name = "accounts/login.html"
     authentication_form = EmailAuthenticationForm
-    redirect_authenticated_user = True
+    # УДАЛИЛИ redirect_authenticated_user = True, чтобы Django не ломал кастомные редиректы
 
     # КАТЕГОРИЧЕСКИЙ СМАРТ-РЕДИРЕКТ ПОСЛЕ ЛОГИНА ПО РОЛЯМ
     def get_success_url(self):
@@ -30,7 +32,11 @@ class CustomLoginView(LoginView):
         if user.groups.filter(name="Преподаватель").exists():
             return reverse_lazy("teacher:group_list")
 
-        # 4. По умолчанию (Родитель)
+        # 4. Проверяем Ребёнка (Ведёт на /home/, где views.dashboard сразу отрендерит кабинет)
+        if user.groups.filter(name="Ребёнок").exists():
+            return reverse_lazy("home:dashboard")
+
+        # 5. По умолчанию (Родитель)
         return reverse_lazy("home:dashboard")
 
 
@@ -145,3 +151,133 @@ def delete_child(request, child_id):
     child.delete()
     messages.success(request, 'Профиль ребёнка успешно удалён из системы.')
     return redirect('home:dashboard')
+
+import secrets
+import string
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Child, RegistrationCode
+
+@login_required
+def generate_child_code(request):
+    if not request.user.groups.filter(name='Родитель').exists():
+        return JsonResponse({'error': 'Доступно только для аккаунтов родителей'}, status=403)
+        
+    child_id = request.GET.get('child_id')
+    if not child_id:
+        return JsonResponse({'error': 'Не указан ID ребенка'}, status=400)
+        
+    # Проверяем, что этот ребенок реально принадлежит текущему родителю (защита от хакеров)
+    child = get_object_or_404(Child, id=child_id, parent=request.user)
+    
+    # Стираем старый код именно ЭТОГО ребенка, если он был
+    RegistrationCode.objects.filter(child=child).delete()
+    
+    # Генерируем 11-значный код
+    alphabet = string.ascii_uppercase + string.digits
+    random_code = ''.join(secrets.choice(alphabet) for _ in range(11))
+    
+    # Сохраняем в базу с привязкой к конкретному ребенку
+    RegistrationCode.objects.create(child=child, code=random_code)
+    
+    return JsonResponse({
+        'status': 'success',
+        'code': random_code,
+        'expires_in': 120
+    })
+
+
+# accounts/views.py
+from django import forms
+from django.contrib.auth.models import User, Group
+
+class ChildRegisterForm(forms.ModelForm):
+    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Придумайте пароль'}))
+    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Повторите пароль'}))
+
+    class Meta:
+        model = User
+        fields = ['email'] # ФИО мы заберем автоматически из карточки ребенка, созданной родителем!
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'example@mail.ru'}),
+        }
+        
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Этот Email уже используется в системе.")
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('password1') != cleaned_data.get('password2'):
+            raise forms.ValidationError("Введенные пароли не совпадают.")
+        return cleaned_data
+
+
+# ШАГ 1: ПРОВЕРКА КОДА РЕБЕНКА С УЛИЦЫ
+def child_check_code(request):
+    if request.method == 'POST':
+        input_code = request.POST.get('code', '').strip().upper()
+        
+        # Ищем код безопасности в нашей базе данных
+        code_obj = RegistrationCode.objects.filter(code=input_code).first()
+        
+        if code_obj and code_obj.is_valid():
+            # Код валидный! Запоминаем ID ребенка в сессии, чтобы пустить на Шаг 2
+            request.session['verified_child_id'] = code_obj.child.id
+            return redirect('accounts:child_register_data')
+        else:
+            messages.error(request, 'Введенный код не существует, либо истекли 2 минуты его действия!')
+            return redirect('accounts:child_check_code')
+            
+    return render(request, 'accounts/child_check_code.html')
+
+
+# ШАГ 2: СОЗДАНИЕ УЧЕТНОЙ ЗАПИСИ И НАЗНАЧЕНИЕ РОЛИ "РЕБЁНОК"
+def child_register_data(request):
+    child_id = request.session.get('verified_child_id')
+    if not child_id:
+        messages.error(request, 'Доступ заблокирован. Пожалуйста, введите код родителя.')
+        return redirect('accounts:child_check_code')
+        
+    child = get_object_or_404(Child, id=child_id)
+    
+    if request.method == 'POST':
+        form = ChildRegisterForm(request.POST)
+        if form.is_valid():
+            # Создаем учетку пользователя системы
+            user = form.save(commit=False)
+            user.username = form.cleaned_data['email'].split('@')[0]
+            if User.objects.filter(username=user.username).exists():
+                user.username = f"{user.username}_{User.objects.count()}"
+                
+            # Переносим настоящие ФИО, которые родитель указал в карточке!
+            user.first_name = child.first_name
+            user.last_name = child.last_name
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+            
+            # ЖЕСТКО НАЗНАЧАЕМ ТВОЮ НОВУЮ СИСТЕМНУЮ РОЛЬ (ГРУППУ) "Ребёнок"
+            child_group, _ = Group.objects.get_or_create(name='Ребёнок')
+            user.groups.add(child_group)
+            
+            # Создаем обязательный системный профиль
+            Profile.objects.create(user=user, phone='—', license_accepted=True, consent_given=True)
+            
+            # Связываем созданного пользователя с объектом ребенка
+            child.user = user
+            child.save()
+            
+            # Удаляем отработавший одноразовый код из базы и чистим сессию
+            RegistrationCode.objects.filter(child=child).delete()
+            del request.session['verified_child_id']
+            
+            # Автоматически авторизуем ребенка в ИС
+            login(request, user)
+            messages.success(request, f'Добро пожаловать, {user.first_name}! Регистрация завершена.')
+            return redirect('home:dashboard') # Потом сделаем ему кастомный редирект на его base
+    else:
+        form = ChildRegisterForm()
+        
+    return render(request, 'accounts/child_register_form.html', {'form': form, 'child': child})

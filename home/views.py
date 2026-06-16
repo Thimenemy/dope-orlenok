@@ -8,15 +8,51 @@ from django.http import JsonResponse
 from django.utils.timezone import localtime
 from django.views.decorators.http import require_POST
 import json
+from accounts.models import Child
 
 def is_parent(user):
     return user.groups.filter(name='Родитель').exists()
 
 
+# home/views.py
+
 @login_required
-@user_passes_test(is_parent)
 def dashboard(request):
-    # Автоматическое обновление статусов старых заявок
+    user = request.user
+
+    # 1. СТРОГАЯ РАЗВОДКА: ЕСЛИ ЭТО АДМИН / ПЕРСОНАЛ — ОТПРАВЛЯЕМ В ИХ КАБИНЕТЫ
+    # (Защита от того, если они случайно или намеренно перейдут по урлу /home/)
+    if user.is_staff and user.is_superuser:
+        return redirect("dashboard_admin:course_list")
+
+    if user.groups.filter(name="Бухгалтер").exists():
+        return redirect("accountant:enrollment_list")
+
+    if user.groups.filter(name="Преподаватель").exists():
+        return redirect("teacher:group_list")
+
+    # 2. ИЗОЛЯЦИЯ РЕБЁНКА: РЕНДЕРИМ ЕГО КАБИНЕТ
+    if user.groups.filter(name='Ребёнок').exists():
+        child_profile = Child.objects.filter(user=user).first()
+
+        # Получаем группы, в которые зачислен этот ребёнок
+        my_groups = []
+        if child_profile:
+            my_groups = GroupMember.objects.filter(child=child_profile).select_related('group__course')
+
+        return render(request, 'home/dashboard_child.html', {
+            'child': child_profile,
+            'my_groups': my_groups,
+            'base_template': 'home/base_child.html'
+        })
+
+    # 3. ИЗОЛЯЦИЯ РОДИТЕЛЯ: ЕСЛИ ЮЗЕР НЕ РОДИТЕЛЬ — ОТ ПОРТ ВОР ОТКАЗ (ACCESS DENIED)
+    if not is_parent(user):
+        return render(request, 'home/access_denied.html') 
+
+    # =====================================================================
+    # ДАЛЬШЕ ТВОЙ ОРИГИНАЛЬНЫЙ КОД ДЛЯ РОДИТЕЛЯ ИДЕТ БЕЗ ЕДИНОГО ИЗМЕНЕНИЯ
+    # =====================================================================
     now = timezone.now()
     submitted_enrollments = Enrollment.objects.filter(
         user=request.user,
@@ -27,7 +63,6 @@ def dashboard(request):
         enrollment.status = 'under_review'
         enrollment.save()
 
-    user = request.user
     profile = user.profile
  
     profile_filled = (
@@ -44,16 +79,11 @@ def dashboard(request):
         enrollment.uploaded_docs = {doc.document_type: doc for doc in enrollment.documents.all()}
         enrollment.sort_date = enrollment.updated_at if enrollment.updated_at else enrollment.created_at
         enrollment.notification_type = 'enrollment'
-        
-        # ЖЕСТКИЙ СТАТИЧНЫЙ КЛЮЧ (Исключаем баг с ежесекундным изменением таймстемпа базы данных)
         enrollment.unread_key = f"enrollment-{enrollment.id}-{enrollment.status}"
     
     document_types = EnrollmentDocument.DOCUMENT_TYPES
 
     # 2. ЗАЧИСЛЕНИЯ В ГРУППЫ
-    from teacher.models import GroupMember, Schedule, StudentCourseReport
-    from django.utils.timezone import localtime
-    
     group_memberships = GroupMember.objects.filter(
         child__parent=user
     ).select_related('group__course', 'child').order_by('-added_at')
@@ -97,14 +127,11 @@ def dashboard(request):
         report.notification_type = 'course_report'
         report.unread_key = f"course_report-{report.id}"
 
-    # ОБЪЕДИНЕНИЕ В ЕДИНУЮ ЛЕНТУ
     notifications_feed = list(enrollments) + list(group_memberships) + list(schedule_updates) + list(course_reports)
     notifications_feed.sort(key=lambda x: getattr(x, 'sort_date', now), reverse=True)
     
-    # Извлекаем прочитанные ключи из базы данных профиля
     read_keys = [k.strip() for k in profile.read_notifications_data.split(',') if k.strip()]
     
-    # Выставляем флаг непрочитанности на бэкенде
     for item in notifications_feed:
         item.is_unread_by_db = item.unread_key not in read_keys
 

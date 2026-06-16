@@ -13,4 +13,7 @@ urlpatterns = [
     path("child/add/", views.add_child, name='add_child'),
     path("child/edit/<int:child_id>/", views.edit_child, name='edit_child'), # Наш новый путь!
     path("child/delete/<int:child_id>/", views.delete_child, name='delete_child'),
+    path("child/generate-code/", views.generate_child_code, name='generate_child_code'),
+    path("child/check-code/", views.child_check_code, name='child_check_code'),
+    path("child/register-setup/", views.child_register_data, name='child_register_data'),
 ]
