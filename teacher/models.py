@@ -22,14 +22,14 @@ class GroupMember(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('group', 'child')  # один ребёнок в одной группе
+        unique_together = ('group', 'child')
 
     def __str__(self):
         return f"{self.child} в {self.group}"
     
 class Schedule(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='schedules')
-    date = models.DateField()                     # конкретная дата занятия
+    date = models.DateField()
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     topic = models.CharField(max_length=200, blank=True)
@@ -38,19 +38,16 @@ class Schedule(models.Model):
 
     class Meta:
         ordering = ['date', 'start_time']
-        unique_together = ['group', 'date', 'start_time']  # в один день несколько уроков    
+        unique_together = ['group', 'date', 'start_time']
 
 class JournalEntry(models.Model):
     student = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='journal_entries')
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='journal_entries')
-    grade = models.CharField(max_length=10, blank=True, default='')  # 5, 4, 3, 2, н/а
-    attendance = models.BooleanField(default=False)  # присутствовал/отсутствовал
+    attendance = models.BooleanField(default=False)  # Только присутствие
     comment = models.TextField(blank=True, default='')
 
     class Meta:
         unique_together = ('student', 'schedule')
-
-from django.db import models
 
 class StudentCourseReport(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='reports')
@@ -59,12 +56,11 @@ class StudentCourseReport(models.Model):
     total_lessons = models.IntegerField(verbose_name='Всего уроков', default=0)
     attended_lessons = models.IntegerField(verbose_name='Посещено уроков', default=0)
     
-    average_score = models.DecimalField(max_digits=4, decimal_places=2, verbose_name='Средний балл')
     knowledge_level = models.CharField(max_length=100, verbose_name='Уровень освоения')
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('group', 'student') # Один ребёнок — один отчёт по курсу
+        unique_together = ('group', 'student')
 
     def __str__(self):
         return f"Отчёт: {self.student.first_name} по группе {self.group.name}"

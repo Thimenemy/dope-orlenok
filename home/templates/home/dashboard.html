@@ -391,17 +391,25 @@
                             <div class="details-expanded-body rounded-bottom-3 mb-3">
                                 <div class="p-3 info-sub-block">
                                     <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">
-                                        <i class="fas fa-chart-bar me-1.5 text-success"></i>Сводные показатели обучения
+                                        <i class="fas fa-chart-bar me-1.5 text-success"></i>Сводные показатели обучения ребенка
                                     </h6>
                                     <div class="row g-2 small text-secondary mt-1">
                                         <div class="col-sm-4"><strong>Посещено занятий:</strong></div>
                                         <div class="col-sm-8 text-dark">{{ item.attended_lessons }} из {{ item.total_lessons }}</div>
                                         
-                                        <div class="col-sm-4"><strong>Средний балл:</strong></div>
-                                        <div class="col-sm-8 text-dark fw-bold"><span class="fs-6 text-primary">{{ item.average_score }}</span></div>
+                                        <div class="col-sm-4"><strong>Процент посещаемости:</strong></div>
+                                        <div class="col-sm-8 text-primary fw-bold">
+                                            {% if item.total_lessons > 0 %}
+                                                {% widthratio item.attended_lessons item.total_lessons 100 %}%
+                                            {% else %}
+                                                0%
+                                            {% endif %}
+                                        </div>
                                         
-                                        <div class="col-sm-4"><strong>Результат:</strong></div>
-                                        <div class="col-sm-8 text-success fw-bold">{{ item.knowledge_level }}</div>
+                                        <div class="col-sm-4"><strong>Итоговый уровень:</strong></div>
+                                        <div class="col-sm-8 fw-bold {% if item.knowledge_level == 'Отличный уровень' %}text-success{% elif item.knowledge_level == 'Хороший уровень' %}text-primary{% elif item.knowledge_level == 'Удовлетворительный уровень' %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ item.knowledge_level }}
+                                        </div>
                                     </div>
                                     <div class="mt-3 pt-2 border-top">
                                         <a href="{% url 'home:view_report_print' item.id %}" target="_blank" class="btn btn-sm btn-success rounded-pill px-4 fw-semibold">
@@ -411,7 +419,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>    
+                    </div> 
 
                 {% elif item.notification_type == 'enrollment' %}
                     <div class="timeline-item-block" data-type="enrollment" data-unread-id="{{ item.unread_key }}">

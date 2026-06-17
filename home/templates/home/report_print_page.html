@@ -16,11 +16,9 @@
     .report-header { border-bottom: 2px solid #198754; padding-bottom: 12px; margin-bottom: 30px; }
     .stat-box { background: #f8fafc; padding: 18px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
 
-    /* КРИТИЧЕСКИ СТИЛЬ ДЛЯ ПЕЧАТИ В PDF */
     @media print {
         body { background: #fff !important; }
         .report-paper { box-shadow: none; border: none; margin: 0; padding: 0; max-width: 100%; }
-        /* Прячем абсолютно всю навигацию, вкладки и шапки системы */
         header, footer, .sidebar, .nav-tabs-wrapper, .no-print { display: none !important; }
         .main-content-layout { padding: 0 !important; overflow: visible !important; }
     }
@@ -41,7 +39,7 @@
             <p class="text-muted small m-0 mt-1">Официальная выписка по результатам окончания курса</p>
         </div>
         <div class="text-end">
-            <h4 class="fw-bold text-success m-0">Образовательный Центр</h4>
+            <h4 class="fw-bold text-success m-0">Образовательный Центр «Орлёнок»</h4>
             <small class="text-muted">Дата выдачи: {{ report.generated_at|date:"d.m.Y" }}</small>
         </div>
     </div>
@@ -55,7 +53,7 @@
     </div>
 
     <div class="mb-5">
-        <h5 class="fw-bold mb-3 text-dark" style="font-size: 1.05rem;"><i class="fas fa-book me-2 text-secondary"></i>Подробные результаты по занятиям</h5>
+        <h5 class="fw-bold mb-3 text-dark" style="font-size: 1.05rem;"><i class="fas fa-book me-2 text-secondary"></i>История посещаемости занятий</h5>
         <div class="table-responsive border rounded-3">
             <table class="table align-middle m-0 text-center" style="font-size: 0.85rem;">
                 <thead class="table-light">
@@ -63,35 +61,28 @@
                         <th style="width: 120px;">Дата урока</th>
                         <th style="width: 100px;">День</th>
                         <th class="text-start">Тема пройденного занятия</th>
-                        <th style="width: 130px;">Присутствие</th>
-                        <th style="width: 100px;">Оценка</th>
+                        <th style="width: 130px;">Статус визита</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for entry in lessons_history %}
                     <tr>
                         <td class="fw-bold text-dark">{{ entry.schedule.date|date:"d.m.Y" }}</td>
-                        <td class="text-secondary">{{ entry.schedule.date|date:"l" }}</td> <td class="text-start text-dark text-truncate" style="max-width: 320px;" title="{{ entry.schedule.topic }}">
+                        <td class="text-secondary">{{ entry.schedule.date|date:"l" }}</td>
+                        <td class="text-start text-dark text-truncate" style="max-width: 350px;" title="{{ entry.schedule.topic }}">
                             {{ entry.schedule.topic|default:"Тема не указана преподавателем" }}
                         </td>
                         <td>
                             {% if entry.attendance %}
-                                <span class="text-success fw-bold"><i class="fas fa-check me-1"></i> Был(а)</span>
+                                <span class="text-success fw-bold"><i class="fas fa-check me-1"></i> Присутствовал</span>
                             {% else %}
                                 <span class="text-danger fw-bold"><i class="fas fa-times me-1"></i> Пропуск (Н)</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if entry.grade %}
-                                <span class="badge bg-primary px-2.5 py-1.5 font-monospace fw-bold" style="font-size: 0.85rem;">{{ entry.grade }}</span>
-                            {% else %}
-                                <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-3 text-muted italic">Данные посещаемости и оценок отсутствуют.</td>
+                        <td colspan="4" class="text-center py-3 text-muted italic">Данные посещаемости отсутствуют.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -99,9 +90,43 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-5">
+        <div class="col-sm-4">
+            <div class="stat-box">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Всего занятий</small>
+                <span class="fs-3 fw-bold text-dark">{{ report.total_lessons }}</span>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="stat-box">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Посещено уроков</small>
+                <span class="fs-3 fw-bold text-success">{{ report.attended_lessons }}</span>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="stat-box" style="background-color: #eff6ff; border-color: #bfdbfe;">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem; color: #1e40af !important;">Процент посещаемости</small>
+                <span class="fs-3 fw-bold text-primary">
+                    {% if report.total_lessons > 0 %}
+                        {% widthratio report.attended_lessons report.total_lessons 100 %}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 mb-4 rounded-3 border bg-light-subtle">
+        <div class="fw-bold text-secondary text-uppercase mb-1" style="font-size: 0.8rem;">Итоговый результат освоения программы:</div>
+        <div class="fs-4 fw-bold {% if report.knowledge_level == 'Отличный уровень' %}text-success{% elif report.knowledge_level == 'Хороший уровень' %}text-primary{% elif report.knowledge_level == 'Удовлетворительный уровень' %}text-warning{% else %}text-danger{% endif %}">
+            {{ report.knowledge_level }}
+        </div>
+    </div>
+
     <div class="pt-3 border-top">
         <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5; text-align: justify;">
-            Данный документ сформирован автоматически информационной системой образовательного центра на основании записей электронного учебного журнала. Показатели отражают степень усвоения теоретического материала, успешность выполнения практических заданий и уровень дисциплины студента на протяжении всего периода обучения.
+            Данный документ сформирован автоматически информационной системой образовательного центра на основании записей электронного учебного журнала. Итоговые показатели отражают регулярность посещения занятий и уровень академической дисциплины студента на протяжении всего периода обучения.
         </p>
         
         <div class="d-flex justify-content-between mt-5 pt-4">

@@ -147,6 +147,10 @@ def chat_detail(request, room_id):
             id=user.id
         )
 
+    chat_is_disabled = False
+    if room.teacher_group_id and room.teacher_group.is_completed:
+        chat_is_disabled = True
+
     context = {
         "room": room,
         "messages": messages_history,
@@ -155,6 +159,7 @@ def chat_detail(request, room_id):
         "is_teacher": is_teacher,
         "other_participant": other_participant,
         "available_users": available_users,
+        'chat_is_disabled': chat_is_disabled,
     }
     return render(request, "chat/chat_detail.html", context)
 

@@ -10,7 +10,6 @@
         <p class="text-muted small mb-0">Сводная ведомость успеваемости студентов по завершённым и текущим курсам</p>
     </div>
 
-    <!-- ПАНЕЛЬ ФИЛЬТРОВ И СОРТИРОВКИ -->
     <div class="card border-0 shadow-sm rounded-3 bg-white mb-4">
         <div class="card-body p-4">
             <form method="get" action="{% url 'teacher:reports_list' %}" class="row g-3 align-items-end">
@@ -40,14 +39,15 @@
                     </select>
                 </div>
                 
+                <!-- Внутри формы фильтрации в reports_list.html -->
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label text-secondary small fw-semibold mb-1">Статус освоения</label>
-                    <select name="status" class="form-select form-select-sm">
+                    <select name="status" class="form-select form-select-custom form-select-sm">
                         <option value="">Любой результат</option>
-                        <option value="Отличное" {% if request.GET.status == 'Отличное' %}selected{% endif %}>Отличное (Продвинутый)</option>
-                        <option value="Хорошее" {% if request.GET.status == 'Хорошее' %}selected{% endif %}>Хорошее (Базовый)</option>
-                        <option value="Удовлетворительное" {% if request.GET.status == 'Удовлетворительное' %}selected{% endif %}>Удовлетворительное</option>
-                        <option value="Курс прослушан" {% if request.GET.status == 'Курс прослушан' %}selected{% endif %}>Прослушан (Повторение)</option>
+                        <option value="Отличный" {% if request.GET.status == 'Отличный' %}selected{% endif %}>Отличный уровень</option>
+                        <option value="Хороший" {% if request.GET.status == 'Хороший' %}selected{% endif %}>Хороший уровень</option>
+                        <option value="Удовлетворительный" {% if request.GET.status == 'Удовлетворительный' %}selected{% endif %}>Удовлетворительный уровень</option>
+                        <option value="Плохой" {% if request.GET.status == 'Плохой' %}selected{% endif %}>Плохой уровень</option>
                     </select>
                 </div>
                 
@@ -56,8 +56,6 @@
                     <select name="sort_by" class="form-select form-select-sm">
                         <option value="date_desc" {% if request.GET.sort_by == 'date_desc' or not request.GET.sort_by %}selected{% endif %}>Сначала новые</option>
                         <option value="date_asc" {% if request.GET.sort_by == 'date_asc' %}selected{% endif %}>Сначала старые</option>
-                        <option value="score_desc" {% if request.GET.sort_by == 'score_desc' %}selected{% endif %}>Высший балл ⬇</option>
-                        <option value="score_asc" {% if request.GET.sort_by == 'score_asc' %}selected{% endif %}>Низший балл ⬆</option>
                     </select>
                 </div>
                 
@@ -71,7 +69,6 @@
         </div>
     </div>
 
-    <!-- ТАБЛИЦА РЕЗУЛЬТАТОВ -->
     <div class="card border-0 shadow-sm rounded-3 bg-white">
         <div class="card-body p-0">
             {% if reports %}
@@ -82,8 +79,8 @@
                             <th class="ps-4">Студент</th>
                             <th>Учебный курс / Группа</th>
                             <th class="text-center">Посещаемость</th>
-                            <th class="text-center">Средний балл</th>
-                            <th>Статус освоения</th>
+                            <th class="text-center">Процент визитов</th>
+                            <th>Результат курса</th>
                             <th class="text-end pe-4">Действие</th>
                         </tr>
                     </thead>
@@ -92,22 +89,26 @@
                         <tr>
                             <td class="ps-4">
                                 <div class="fw-bold text-dark">{{ r.student.last_name }} {{ r.student.first_name }}</div>
-                                <small class="text-muted">Дата выдачи: {{ r.generated_at|date:"d.m.Y" }}</small>
+                                <small class="text-muted">Дата архивации: {{ r.generated_at|date:"d.m.Y" }}</small>
                             </td>
                             <td>
                                 <div class="fw-semibold text-secondary">{{ r.group.course.name }}</div>
                                 <small class="text-muted">Группа: "{{ r.group.name }}"</small>
                             </td>
                             <td class="text-center fw-medium text-dark">
-                                {{ r.attended_lessons }} / {{ r.total_lessons }}
+                                {{ r.attended_lessons }} из {{ r.total_lessons }}
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-primary-subtle text-primary fw-bold fs-6 px-2.5 py-1 rounded">
-                                    {{ r.average_score|floatformat:2 }}
+                                    {% if r.total_lessons > 0 %}
+                                        {% widthratio r.attended_lessons r.total_lessons 100 %}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
                                 </span>
                             </td>
                             <td>
-                                <span class="small fw-semibold {% if r.average_score >= 4.5 %}text-success{% elif r.average_score >= 3.5 %}text-primary{% elif r.average_score >= 2.5 %}text-warning{% else %}text-danger{% endif %}">
+                                <span class="small fw-bold {% if r.knowledge_level == 'Отличный уровень' %}text-success{% elif r.knowledge_level == 'Хороший уровень' %}text-primary{% elif r.knowledge_level == 'Удовлетворительный уровень' %}text-warning{% else %}text-danger{% endif %}">
                                     {{ r.knowledge_level }}
                                 </span>
                             </td>

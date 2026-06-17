@@ -146,7 +146,7 @@ def child_schedule(request):
 
     if child_profile:
         # Берём строго группы, в которые зачислен этот ребёнок
-        my_memberships = GroupMember.objects.filter(child=child_profile).select_related('group__course')
+        my_memberships = GroupMember.objects.filter(child=child_profile, group__is_completed=False).select_related('group__course')
         
         for membership in my_memberships:
             group = membership.group
@@ -194,7 +194,7 @@ def child_journal(request):
 
     groups_journal = []
     if child_profile:
-        my_memberships = GroupMember.objects.filter(child=child_profile).select_related('group__course')
+        my_memberships = GroupMember.objects.filter(child=child_profile, group__is_completed=False).select_related('group__course')
         for membership in my_memberships:
             group = membership.group
             journal_entries = JournalEntry.objects.filter(
@@ -231,7 +231,10 @@ def mark_notification_read_ajax(request):
 
 @login_required
 def parent_schedule(request):
-    groups = Group.objects.filter(members__child__parent=request.user).distinct().prefetch_related('members__child')
+    groups = Group.objects.filter(
+        members__child__parent=request.user, 
+        is_completed=False  # ИСКЛЮЧАЕМ ЗАВЕРШЕННЫЕ
+    ).distinct().prefetch_related('members__child')
     for group in groups:
         group.parent_children = group.members.filter(child__parent=request.user).select_related('child')
     return render(request, 'home/parent_schedule.html', {'groups': groups})
@@ -278,7 +281,10 @@ def parent_journal(request):
     journal_entries = []
     if selected_child_id:
         selected_child = get_object_or_404(children, id=selected_child_id)
-        journal_entries = JournalEntry.objects.filter(student=selected_child).select_related('schedule__group', 'schedule').order_by('schedule__date')
+        journal_entries = JournalEntry.objects.filter(
+            student=selected_child,
+            schedule__group__is_completed=False  # ИСКЛЮЧАЕМ ЗАВЕРШЕННЫЕ
+        ).select_related('schedule__group', 'schedule').order_by('schedule__date')
     return render(request, 'home/parent_journal.html', {'children': children, 'selected_child': selected_child, 'journal_entries': journal_entries})
 
 @login_required

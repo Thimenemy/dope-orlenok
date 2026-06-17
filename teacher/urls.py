@@ -19,6 +19,6 @@ urlpatterns = [
    path('group/<int:group_id>/create_group_chat/', views.create_group_chat_for_group, name='create_group_chat_for_group'),
    path('group/<int:group_id>/complete/', views.complete_course, name='complete_course'),
    path('reports/', views.reports_list, name='reports_list'),
-   path("course/<int:course_id>/finish/", views.finish_course, name="finish_course"),
+   path("course/<int:group_id>/finish/", views.complete_course, name="finish_course"),
    
 ]

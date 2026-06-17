@@ -151,7 +151,6 @@
 {% block content %}
 <div class="chat-wrapper">
     
-    <!-- 1. Верхняя панель метаданных чата -->
     <div class="chat-header-panel">
         <div>
             {% if room.room_type == 'group' %}
@@ -189,21 +188,17 @@
         </div>
     </div>
 
-    <!-- 2. Главная скролл-зона вывода сообщений -->
     <div id="chat-messages" class="chat-messages-body">
         {% for msg in messages %}
             <div class="chat-message-row {% if msg.sender == user %}message-mine{% else %}message-other{% endif %}" id="msg-{{ msg.id }}" data-msg-id="{{ msg.id }}">
                 
-                <!-- Аватарка -->
                 <div class="chat-avatar" data-username="{{ msg.sender.username }}">
                     {% if msg.sender.first_name %}{{ msg.sender.first_name|slice:":1" }}{% else %}{{ msg.sender.username|slice:":1" }}{% endif %}
                 </div>
 
-                <!-- Тело сообщения -->
                 <div class="message-bubble">
                     <div class="d-flex justify-content-between align-items-start gap-3">
                         <div style="min-width: 0;">
-                            <!-- ФИО автора сообщения -->
                             <small class="d-block fw-bold mb-1" style="font-size: 0.8rem; color: #4f46e5;">
                                 {% if msg.sender.get_full_name %}
                                     {{ msg.sender.get_full_name }}
@@ -212,12 +207,10 @@
                                 {% endif %}
                             </small>
                             
-                            <!-- Контент -->
                             <span class="message-content" style="font-size: 0.925rem; word-break: break-word;">{{ msg.content|safe }}</span>
                             {% if msg.edited %}<small class="text-muted ms-1" style="font-size: 0.75rem;">(ред.)</small>{% endif %}
                             <small class="text-muted d-block text-end mt-1" style="font-size: 0.7rem;">{{ msg.timestamp|date:"H:i" }}</small>
                             
-                            <!-- Вложения -->
                             {% if msg.attachment %}
                                 <div class="mt-2 attachment-container">
                                     {% if msg.attachment_type == 'image' %}
@@ -235,7 +228,6 @@
                             {% endif %}
                         </div>
 
-                        <!-- Опции сообщения (Управление/Ответ) -->
                         <div class="dropdown">
                             <button class="btn btn-sm btn-link p-0 text-secondary opacity-50 hover-opacity-100" data-bs-toggle="dropdown">⋮</button>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="font-size: 0.85rem;">
@@ -263,34 +255,36 @@
         {% endfor %}
     </div>
 
-    <!-- 3. Панель ввода и плашка реплая -->
     <div class="chat-input-panel">
-        <!-- Блок превью ответа на сообщение -->
-        <div id="reply-preview-container" class="alert alert-light border py-2 px-3 mb-3 d-none d-flex justify-content-between align-items-center rounded-3 shadow-sm">
-            <div style="min-width: 0;">
-                <div class="small text-dark fw-bold"><i class="fas fa-reply text-primary me-2"></i>Ответ пользователю <span id="reply-user"></span></div>
-                <div id="reply-text" class="text-muted small text-truncate" style="max-width: 600px;"></div>
+        {% if chat_is_disabled %}
+            <div class="alert alert-danger text-center m-0 small border-0 py-2.5 rounded-3 fw-bold shadow-sm" style="background-color: #fee2e2; color: #991b1b;">
+                <i class="fas fa-lock me-1"></i> Курс этой учебной группы официально завершён. Чат переведён в режим архива, отправка сообщений заблокирована.
             </div>
-            <button type="button" class="btn-close btn-sm" id="cancel-reply-btn"></button>
-        </div>
+        {% else %}
+            <div id="reply-preview-container" class="alert alert-light border py-2 px-3 mb-3 d-none d-flex justify-content-between align-items-center rounded-3 shadow-sm">
+                <div style="min-width: 0;">
+                    <div class="small text-dark fw-bold"><i class="fas fa-reply text-primary me-2"></i>Ответ пользователю <span id="reply-user"></span></div>
+                    <div id="reply-text" class="text-muted small text-truncate" style="max-width: 600px;"></div>
+                </div>
+                <button type="button" class="btn-close btn-sm" id="cancel-reply-btn"></button>
+            </div>
 
-        <!-- Поле ввода и кнопки действий -->
-        <div class="d-flex align-items-end gap-2">
-            <input type="file" id="chat-file-input" style="display: none;">
-            <button class="btn btn-light chat-action-btn border" type="button" id="attach-file-btn" title="Прикрепить файл">
-                <i class="fas fa-paperclip text-secondary fs-5"></i>
-            </button>
-            
-            <textarea id="chat-message-input" class="form-control chat-textarea" rows="1" placeholder="Напишите сообщение..."></textarea>
-            
-            <button class="btn btn-primary chat-action-btn shadow-sm" type="button" id="chat-message-submit" title="Отправить">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+            <div class="d-flex align-items-end gap-2">
+                <input type="file" id="chat-file-input" style="display: none;">
+                <button class="btn btn-light chat-action-btn border" type="button" id="attach-file-btn" title="Прикрепить файл">
+                    <i class="fas fa-paperclip text-secondary fs-5"></i>
+                </button>
+                
+                <textarea id="chat-message-input" class="form-control chat-textarea" rows="1" placeholder="Напишите сообщение..."></textarea>
+                
+                <button class="btn btn-primary chat-action-btn shadow-sm" type="button" id="chat-message-submit" title="Отправить">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Блок всех Модальных Окон (без изменений логики Джанго) -->
 {% if room.room_type == 'group' %}
 <div class="modal fade" id="participantsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -410,7 +404,6 @@
     </div>
 </div>
 
-<!-- ПОЛНОСТЬЮ АВТОНОМНЫЙ JAVASCRIPT-БЛОК СЕТИ -->
 <script>
     const roomId = {{ room.id }};
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
@@ -585,18 +578,18 @@
         document.getElementById('chat-message-input').focus();
     }
 
-    document.getElementById('cancel-reply-btn').onclick = function() {
-        replyData = null;
-        document.getElementById('reply-preview-container').classList.add('d-none');
-    };
+    if (document.getElementById('cancel-reply-btn')) {
+        document.getElementById('cancel-reply-btn').onclick = function() {
+            replyData = null;
+            document.getElementById('reply-preview-container').classList.add('d-none');
+        };
+    }
 
-    // ОБРАБОТЧИК ВЕБ-СОКЕТА С АВТОПРОЧТЕНИЕМ
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
         const isMine = (data.sender === "{{ user.username }}");
         renderMessage(data, isMine);
         
-        // Если сообщение от другого человека, дергаем бэкенд, чтобы записать прочтение в БД
         if (!isMine) {
             fetch(`/chat/room/${roomId}/mark_read/`, {
                 method: 'GET',
@@ -617,6 +610,7 @@
 
     function sendTextMessage() {
         const input = document.getElementById('chat-message-input');
+        if (!input) return;
         let message = input.value.trim();
         if (message) {
             if (replyData) {
@@ -630,28 +624,37 @@
         }
     }
 
-    document.getElementById('chat-message-submit').onclick = sendTextMessage;
-    document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendTextMessage();
-        }
-    });
+    if (document.getElementById('chat-message-submit')) {
+        document.getElementById('chat-message-submit').onclick = sendTextMessage;
+    }
+    
+    if (document.getElementById('chat-message-input')) {
+        document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendTextMessage();
+            }
+        });
+    }
 
-    document.getElementById('attach-file-btn').onclick = () => { document.getElementById('chat-file-input').click(); };
+    if (document.getElementById('attach-file-btn')) {
+        document.getElementById('attach-file-btn').onclick = () => { document.getElementById('chat-file-input').click(); };
+    }
 
-    document.getElementById('chat-file-input').onchange = function(e) {
-        if (this.files.length) {
-            const formData = new FormData();
-            formData.append('attachment', this.files[0]);
-            fetch(`/chat/upload/${roomId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken },
-                body: formData
-            }).then(response => response.json()).catch(err => console.error(err));
-            this.value = '';
-        }
-    };
+    if (document.getElementById('chat-file-input')) {
+        document.getElementById('chat-file-input').onchange = function(e) {
+            if (this.files.length) {
+                const formData = new FormData();
+                formData.append('attachment', this.files[0]);
+                fetch(`/chat/upload/${roomId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: formData
+                }).then(response => response.json()).catch(err => console.error(err));
+                this.value = '';
+            }
+        };
+    }
 
     document.querySelector('#removeForm select[name="user_id"]')?.addEventListener('change', function() {
         this.parentElement.parentElement.action = this.value ? `/chat/remove/${roomId}/${this.value}/` : "";
