@@ -30,6 +30,10 @@
         border-radius: 4px;
         background-color: #f1f5f9;
     }
+    .status-completed {
+        background-color: #f8fafc;
+        opacity: 0.8;
+    }
 </style>
 {% endblock %}
 
@@ -44,51 +48,33 @@
     </button>
 </div>
 
-<div class="row g-4">
-    {% for group in groups %}
+<h4 class="fw-bold text-dark mt-4 mb-3"><i class="fas fa-chalkboard-teacher me-2 text-primary"></i>Активные группы</h4>
+<div class="row g-4 mb-5">
+    {% for group in active_groups %}
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 shadow-sm group-card">
             <div class="card-body p-4 d-flex flex-column h-100">
-                
-                <!-- Верхняя часть карточки с названием и иконкой -->
                 <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="icon-box">
-                        <i class="fas fa-book-reader fs-4"></i>
-                    </div>
-                    <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1 rounded-pill small">
-                        ID: {{ group.id }}
-                    </span>
+                    <div class="icon-box"><i class="fas fa-book-reader fs-4"></i></div>
+                    <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1 rounded-pill small">ID: {{ group.id }}</span>
                 </div>
-
-                <!-- Название группы и курса -->
                 <h5 class="card-title fw-bold text-dark mb-1">{{ group.name }}</h5>
-                <p class="text-muted small mb-3 flex-grow-1">
-                    <i class="fas fa-graduation-cap me-1"></i> {{ group.course.name }}
-                </p>
-
-                <!-- Даты проведения курса -->
+                <p class="text-muted small mb-3 flex-grow-1"><i class="fas fa-graduation-cap me-1"></i> {{ group.course.name }}</p>
                 <div class="bg-light p-2.5 rounded-3 mb-3 text-muted small d-flex justify-content-between align-items-center">
                     <span><i class="far fa-calendar-alt me-1"></i> {{ group.start_date|date:"d.m.Y" }}</span>
                     <i class="fas fa-long-arrow-alt-right text-muted px-1"></i>
                     <span><i class="far fa-calendar-check me-1"></i> {{ group.end_date|date:"d.m.Y" }}</span>
                 </div>
-
-                <!-- Заполненность группы учениками -->
                 <div class="mb-4">
                     <div class="d-flex justify-content-between text-muted small mb-1">
                         <span>Заполненность класса</span>
                         <strong class="text-dark">{{ group.members.count }} / {{ group.max_students }}</strong>
                     </div>
-                    <!-- Прогресс-бар меняет цвет, если забит на 100% -->
                     <div class="progress">
                         <div class="progress-bar {% if group.members.count >= group.max_students %}bg-danger{% else %}bg-success{% endif %}" 
-                             role="progressbar" 
-                             style="width: {% widthratio group.members.count group.max_students 100 %}%">
-                        </div>
+                             role="progressbar" style="width: {% widthratio group.members.count group.max_students 100 %}%"></div>
                     </div>
                 </div>
-
-                <!-- Кнопка действия -->
                 <div class="mt-auto">
                     <a href="{% url 'teacher:group_detail' group.pk %}" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
                         Управление группой <i class="fas fa-arrow-right ms-1"></i>
@@ -99,51 +85,40 @@
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="text-center py-5 bg-white rounded-3 shadow-sm border border-dashed">
-            <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
-            <h5 class="text-secondary fw-bold">У вас пока нет активных групп</h5>
-            <p class="text-muted small mb-4">Нажмите кнопку сверху, чтобы создать вашу первую учебную группу</p>
-        </div>
+        <div class="text-center py-4 text-muted small italic">Активных учебных групп в работе нет.</div>
     </div>
     {% endfor %}
 </div>
 
-<!-- Модальное окно создания группы (с улучшенными стилями форм) -->
-<div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <form method="post">
-                {% csrf_token %}
-                <div class="modal-header bg-light border-0">
-                    <h5 class="modal-title fw-bold text-dark"><i class="fas fa-plus-circle text-primary me-2"></i>Новая учебная группа</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<h4 class="fw-bold text-secondary mt-5 mb-3"><i class="fas fa-archive me-2"></i>Завершенные группы</h4>
+<div class="row g-4">
+    {% for group in finished_groups %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm group-card status-completed">
+            <div class="card-body p-4 d-flex flex-column h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="icon-box" style="background-color: #f1f5f9; color: #64748b;"><i class="fas fa-archive fs-4"></i></div>
+                    <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small">ID: {{ group.id }}</span>
                 </div>
-                <div class="modal-body px-4 py-3">
-                    <!-- Бутстрап обертка для полей формы -->
-                    <div class="teacher-form-fields">
-                        {{ form.as_p }}
-                    </div>
+                <h5 class="card-title fw-bold text-secondary mb-1">{{ group.name }}</h5>
+                <p class="text-muted small mb-3 flex-grow-1"><i class="fas fa-graduation-cap me-1"></i> {{ group.course.name }}</p>
+                <div class="bg-light p-2.5 rounded-3 mb-3 text-muted small d-flex justify-content-between align-items-center">
+                    <span>Курс завершён</span>
+                    <i class="fas fa-check-circle text-success"></i>
                 </div>
-                <div class="modal-footer bg-light border-0">
-                    <button type="button" class="btn btn-secondary px-3 rounded-pill btn-sm" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary px-4 rounded-pill btn-sm shadow-sm">Создать группу</button>
+                <div class="mt-auto">
+                    <a href="{% url 'teacher:group_detail' group.pk %}" class="btn btn-outline-secondary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                        Просмотр архива <i class="fas fa-eye ms-1"></i>
+                    </a>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-4 text-muted small italic">Архив завершенных групп пуст.</div>
+    </div>
+    {% endfor %}
 </div>
 
-<script>
-    // Скрипт красиво внедряет бутстрап-классы в поля формы джанго
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll('.teacher-form-fields p input, .teacher-form-fields p select').forEach(element => {
-            element.classList.add('form-control');
-            element.classList.add('form-control-sm');
-            if(element.tagName === 'SELECT') {
-                element.classList.remove('form-control');
-                element.classList.add('form-select');
-            }
-        });
-    });
-</script>
 {% endblock %}
