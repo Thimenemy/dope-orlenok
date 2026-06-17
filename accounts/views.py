@@ -206,9 +206,9 @@ class ChildRegisterForm(forms.ModelForm):
         return cleaned_data
 
 
-# ШАГ 1 РЕГИСТРАЦИИ РЕБЕНКА
+# accounts/views.py
+
 def child_check_code(request):
-    # ЗАЩИТА: Авторизованным пользователям тут делать нечего
     if request.user.is_authenticated:
         return redirect("home:dashboard")
 
@@ -217,6 +217,11 @@ def child_check_code(request):
         code_obj = RegistrationCode.objects.filter(code=input_code).first()
         
         if code_obj and code_obj.is_valid():
+            # 🛡️ ЖЕСТКАЯ ПРОВЕРКА: Если у этого ребенка УЖЕ есть аккаунт в ИС, блокируем повторную регистрацию
+            if code_obj.child.user is not None:
+                messages.error(request, f'Ребёнок {code_obj.child.first_name} уже зарегистрирован в системе! Повторная настройка не требуется. Используйте обычный вход.')
+                return redirect('accounts:login')
+
             request.session['verified_child_id'] = code_obj.child.id
             return redirect('accounts:child_register_data')
         else:

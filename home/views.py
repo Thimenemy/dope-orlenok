@@ -17,9 +17,20 @@ def is_parent(user):
 def dashboard(request):
     user = request.user
 
-    # ИЗОЛЯЦИЯ РЕБЕНКА: ЕСЛИ ЭТО РЕБЕНОК, СРАЗУ ОТДАЕМ ЕГО ШАБЛОН И ВЫХОДИМ!
+    # ИЗОЛЯЦИЯ РЕБЕНКА
     if user.groups.filter(name='Ребёнок').exists():
         child_profile = Child.objects.filter(user=user).first()
+        
+        # 🚑 ЭКСТРЕННАЯ АВТОПОЧИНКА БАЗЫ ДАННЫХ
+        if not child_profile:
+            # Ищет любую непривязанную карточку ребенка и связывает с тобой
+            free_child = Child.objects.filter(user__isnull=True).last()
+            if free_child:
+                free_child.user = user
+                free_child.save()
+                child_profile = free_child
+        # -------------------------------------
+
         my_groups = []
         if child_profile:
             my_groups = GroupMember.objects.filter(child=child_profile).select_related('group__course')
@@ -30,7 +41,6 @@ def dashboard(request):
             'base_template': 'home/base_child.html'
         })
 
-    # ЕСЛИ ЭТО РАБОТНИКИ ЛАГЕРЯ, ОТПРАВЛЯЕМ ИХ В СВОИ КАБИНЕТЫ
     if user.is_staff and user.is_superuser:
         return redirect("dashboard_admin:course_list")
     if user.groups.filter(name="Бухгалтер").exists():
@@ -38,11 +48,10 @@ def dashboard(request):
     if user.groups.filter(name="Преподаватель").exists():
         return redirect("teacher:group_list")
 
-    # ЕСЛИ ЮЗЕР НЕ РОДИТЕЛЬ
     if not is_parent(user):
         return render(request, 'home/access_denied.html')
 
-    # ЛОГИКА ДЛЯ РОДИТЕЛЯ
+    # --- ЛОГИКА РОДИТЕЛЯ ---
     now = timezone.now()
     submitted_enrollments = Enrollment.objects.filter(
         user=request.user, status='submitted', submitted_at__lte=now - timedelta(minutes=30)
@@ -110,6 +119,97 @@ def dashboard(request):
         'notifications_feed': notifications_feed, 'base_template': 'home/base_auth.html'
     })
 
+
+# ==========================================
+# ВЬЮХИ ДЛЯ РЕБЁНКА (РАСПИСАНИЕ И ЖУРНАЛ)
+# ==========================================
+
+# home/views.py
+
+@login_required
+def child_schedule(request):
+    if not request.user.groups.filter(name='Ребёнок').exists():
+        return redirect('home:dashboard')
+
+    child_profile = Child.objects.filter(user=request.user).first()
+    
+    # Автопочинка связей, если аккаунт разсинхронизировался
+    if not child_profile:
+        free_child = Child.objects.filter(user__isnull=True).last()
+        if free_child:
+            free_child.user = request.user
+            free_child.save()
+            child_profile = free_child
+
+    weekday_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    groups_data = []
+
+    if child_profile:
+        # Берём строго группы, в которые зачислен этот ребёнок
+        my_memberships = GroupMember.objects.filter(child=child_profile).select_related('group__course')
+        
+        for membership in my_memberships:
+            group = membership.group
+            schedules = group.schedules.order_by('date')
+            
+            # Собираем уроки по неделям и дням (один в один как у родителя)
+            weeks_data = {}
+            for s in schedules:
+                start_of_week = s.date - timedelta(days=s.date.weekday())
+                key = start_of_week.isoformat()
+                if key not in weeks_data:
+                    weeks_data[key] = {
+                        'start': start_of_week, 
+                        'end': start_of_week + timedelta(days=6), 
+                        'days': {i: [] for i in range(7)}
+                    }
+                weeks_data[key]['days'][s.date.weekday()].append(s)
+                
+            weeks = sorted(weeks_data.values(), key=lambda w: w['start'])
+            groups_data.append({
+                'group': group,
+                'weeks': weeks
+            })
+
+    return render(request, 'home/child_schedule.html', {
+        'groups_data': groups_data,
+        'weekday_names': weekday_names,
+        'base_template': 'home/base_child.html'
+    })
+
+@login_required
+def child_journal(request):
+    if not request.user.groups.filter(name='Ребёнок').exists():
+        return redirect('home:dashboard')
+
+    child_profile = Child.objects.filter(user=request.user).first()
+    
+    # 🚑 АВТОПОЧИНКА
+    if not child_profile:
+        free_child = Child.objects.filter(user__isnull=True).last()
+        if free_child:
+            free_child.user = request.user
+            free_child.save()
+            child_profile = free_child
+
+    groups_journal = []
+    if child_profile:
+        my_memberships = GroupMember.objects.filter(child=child_profile).select_related('group__course')
+        for membership in my_memberships:
+            group = membership.group
+            journal_entries = JournalEntry.objects.filter(
+                student=child_profile, schedule__group=group
+            ).select_related('schedule').order_by('schedule__date')
+            
+            groups_journal.append({'group': group, 'journal_entries': journal_entries})
+
+    return render(request, 'home/child_journal.html', {
+        'groups_journal': groups_journal,
+        'base_template': 'home/base_child.html'
+    })
+
+
+# --- ВЬЮХИ AJAX И РОДИТЕЛЯ ---
 @login_required
 @require_POST
 def mark_notification_read_ajax(request):

@@ -1,0 +1,89 @@
+{% extends base_template %}
+{% load home_extras %}
+
+{% block content %}
+<div class="pb-2 mb-4 border-bottom">
+    <h1 class="h3 fw-bold text-dark m-0">
+        <i class="far fa-calendar-alt text-primary me-2"></i>Моё расписание занятий
+    </h1>
+    <p class="text-muted small mb-0">Календарная сетка твоих занятий в лагере по учебным неделям.</p>
+</div>
+
+{% for data in groups_data %}
+<div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 16px; background: #fff;">
+    
+    <!-- Шапка курса -->
+    <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-4">
+        <h5 class="fw-bold text-dark m-0">
+            <i class="fas fa-graduation-cap text-primary me-2"></i>Программа: {{ data.group.course.name }}
+        </h5>
+        <span class="badge bg-primary rounded-pill px-3 py-1.5 fs-7">Группа: {{ data.group.name }}</span>
+    </div>
+
+    {% if data.weeks %}
+    <div class="table-responsive">
+        <table class="table table-bordered text-center align-middle mb-0" style="font-size: 0.9rem;">
+            <thead>
+                <tr class="table-light text-secondary">
+                    <th style="width: 120px; background-color: #f8fafc;">День / Неделя</th>
+                    {% for week in data.weeks %}
+                        <th class="fw-bold text-dark" style="min-width: 160px; background-color: #f8fafc;">
+                            {{ week.start|date:"d.m" }} – {{ week.end|date:"d.m" }}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day_name in weekday_names %}
+                {% with day_index=forloop.counter0 %}
+                <tr>
+                    <!-- Название дня недели слева -->
+                    <th class="table-light text-secondary fw-bold" style="background-color: #f8fafc;">
+                        {{ day_name }}
+                    </th>
+                    
+                    <!-- Ячейки недель -->
+                    {% for week in data.weeks %}
+                        {% with lessons=week.days|get_item:day_index %}
+                            {% with lesson=lessons|first %}
+                            <td class="p-2 {% if lesson %}table-success bg-opacity-25{% endif %}" style="height: 90px; vertical-align: top;">
+                                {% if lesson %}
+                                    <div class="p-2 rounded-3 text-start h-100 shadow-sm border-start border-primary border-4 bg-white">
+                                        <div class="fw-bold text-dark small mb-1">
+                                            <i class="far fa-clock opacity-75"></i> {{ lesson.time|time:"H:i" }}
+                                        </div>
+                                        <div class="text-secondary fw-medium lh-sm" style="font-size: 0.8rem;" title="{{ lesson.topic }}">
+                                            {{ lesson.topic|default:"Занятие" }}
+                                        </div>
+                                        {% if lesson.classroom %}
+                                            <div class="text-muted mt-1" style="font-size: 0.7rem;">
+                                                <i class="fas fa-map-marker-alt"></i> Каб. {{ lesson.classroom }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted opacity-25 small d-block mt-3">—</span>
+                                {% endif %}
+                            </td>
+                            {% endwith %}
+                        {% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="alert alert-light border text-center text-muted m-0 py-4">
+            <i class="fas fa-info-circle me-1"></i>Для данной группы расписание ещё не сгенерировано.
+        </div>
+    {% endif %}
+</div>
+{% empty %}
+<div class="card border-0 shadow-sm p-5 text-center text-muted italic rounded-4">
+    <i class="far fa-calendar-times fa-3x mb-3 opacity-50"></i>
+    Ты пока не зачислен ни в одну учебную группу лагеря.
+</div>
+{% endfor %}
+{% endblock %}

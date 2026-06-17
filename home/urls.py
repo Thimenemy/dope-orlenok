@@ -19,4 +19,6 @@ urlpatterns = [
     path("journal/", views.parent_journal, name="parent_journal"),
     path('report/<int:report_id>/print/', views.view_report_print, name='view_report_print'),
     path('notification/read/', views.mark_notification_read_ajax, name='mark_read_ajax'),
+    path('child/schedule/', views.child_schedule, name='child_schedule'),
+    path('child/journal/', views.child_journal, name='child_journal'),
 ]

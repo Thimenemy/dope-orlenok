@@ -30,6 +30,7 @@ class Course(models.Model):
     slots_per_group = models.PositiveIntegerField(
         default=15, verbose_name="Мест в одной группе"
     )
+    is_finished = models.BooleanField(default=False, verbose_name="Курс завершён")
 
     class Meta:
         ordering = ("name",)

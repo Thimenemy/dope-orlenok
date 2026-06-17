@@ -29,29 +29,18 @@
             
             <ul class="nav nav-pills flex-column mb-auto">
                 <li class="nav-item">
-                    <a href="{% url 'home:dashboard' %}" class="nav-link {% if request.path == '/home/' or 'dashboard' in request.path and 'chats' not in request.path %}active{% endif %}">
+                    <a href="{% url 'home:dashboard' %}" class="nav-link {% if request.path == '/home/' or 'dashboard' in request.path and 'schedule' not in request.path and 'journal' not in request.path %}active{% endif %}">
                         <i class="fas fa-th-large me-2"></i> Главная
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-link">
+                    <a href="{% url 'home:child_schedule' %}" class="nav-link {% if 'child/schedule' in request.path %}active{% endif %}">
                         <i class="far fa-calendar-alt me-2"></i> Моё расписание
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-link">
+                    <a href="{% url 'home:child_journal' %}" class="nav-link {% if 'child/journal' in request.path %}active{% endif %}">
                         <i class="fas fa-graduation-cap me-2"></i> Успеваемость
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'chat:chat_list' %}" class="nav-link d-flex justify-content-between align-items-center {% if 'chat' in request.path %}active{% endif %}">
-                        <div>
-                            <i class="fas fa-comments me-2"></i>
-                            <span>Мои чаты</span>
-                        </div>
-                        {% if unread_chats_count > 0 %}
-                            <span class="badge bg-danger rounded-pill">{{ unread_chats_count }}</span>
-                        {% endif %}
                     </a>
                 </li>
             </ul>

@@ -484,3 +484,32 @@ def reports_list(request):
         'base_template': 'teacher/base_teacher.html'
     }
     return render(request, 'teacher/reports_list.html', context)
+
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from main.models import Course
+from enrollment.models import Enrollment
+
+@login_required
+def finish_course(request, course_id):
+    # Проверяем, что это препод
+    if not request.user.groups.filter(name="Преподаватель").exists():
+        return redirect("home:dashboard")
+        
+    course = get_object_or_404(Course, id=course_id)
+    
+    if request.method == 'POST':
+        # 1. Помечаем курс как завершённый
+        course.is_finished = True
+        course.available = False # Убираем из доступных для покупки
+        course.save()
+        
+        # 2. Освобождаем места: переводим связанные активные заявки в архивный/завершённый статус
+        # Чтобы метод course.has_free_slots() снова видел свободные места
+        Enrollment.objects.filter(course=course, status='paid').update(status='completed')
+        
+        messages.success(request, f"Курс «{course.name}» успешно завершён. Доступ заблокирован, места освобождены.")
+        return redirect("teacher:group_list")
+        
+    return redirect("teacher:group_list")
