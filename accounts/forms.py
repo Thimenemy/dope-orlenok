@@ -83,6 +83,24 @@ class ProfileForm(forms.ModelForm):
         if not can_edit:
             for field_name, field in self.fields.items():
                 field.disabled = True
+    
+    def save(self, commit=True):
+        # Сначала сохраняем данные Profile, но пока не отправляем в БД (commit=False)
+        profile = super().save(commit=False)
+        
+        # Получаем связанного пользователя
+        user = profile.user
+        
+        # Обновляем имя и фамилию из очищенных данных формы
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        
+        if commit:
+            # Сохраняем обе модели в базу данных
+            user.save()
+            profile.save()
+            
+        return profile
 
 
 class ChildForm(forms.ModelForm):

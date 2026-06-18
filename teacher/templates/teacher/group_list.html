@@ -120,5 +120,47 @@
     </div>
     {% endfor %}
 </div>
-
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <form method="post" action="{% url 'teacher:group_list' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-light border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Новая учебная группа
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Название группы</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Учебный курс</label>
+                        {{ form.course }}
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small text-uppercase">Дата начала</label>
+                            {{ form.start_date }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small text-uppercase">Дата окончания</label>
+                            {{ form.end_date }}
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-secondary small text-uppercase">Максимум учеников</label>
+                        {{ form.max_students }}
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 rounded-bottom-4">
+                    <button type="button" class="btn btn-light px-4 rounded-pill border fw-medium" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm fw-semibold">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

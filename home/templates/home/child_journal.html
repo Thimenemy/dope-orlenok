@@ -1,28 +1,63 @@
-<div class="table-responsive">
-    <table class="table table-hover align-middle" style="font-size: 0.925rem;">
-        <thead class="table-light text-secondary">
-            <tr>
-                <th style="width: 15%;">Дата урока</th>
-                <th style="width: 35%;">Тема занятия</th>
-                <th style="width: 20%; text-align: center;">Посещаемость</th>
-                <th style="width: 30%;">Комментарий учителя</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for entry in item.journal_entries %}
-            <tr>
-                <td class="fw-bold text-secondary">{{ entry.schedule.date|date:"d.m.Y" }}</td>
-                <td class="text-dark">{{ entry.schedule.topic|default:"—" }}</td>
-                <td class="text-center">
-                    {% if entry.attendance %}
-                        <span class="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill small fw-bold" style="background-color: #d1fae5; color: #065f46;">Присутствовал</span>
-                    {% else %}
-                        <span class="badge bg-danger-subtle text-danger px-2.5 py-1 rounded-pill small fw-bold" style="background-color: #fee2e2; color: #991b1b;">Отсутствовал</span>
-                    {% endif %}
-                </td>
-                <td class="text-muted small">{{ entry.comment|default:"—" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% extends base_template %}
+{% load teacher_extras %}  {% block content %}
+<div class="pb-2 mb-4 border-bottom">
+    <h1 class="h3 fw-bold text-dark m-0">
+        <i class="fas fa-book text-primary me-2"></i>Мой электронный журнал
+    </h1>
+    <p class="text-muted small mb-0">Здесь ты можешь посмотреть свои отметки, посещаемость и комментарии учителей.</p>
 </div>
+
+{% for item in groups_data %}
+<div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 16px; background: #fff;">
+    
+    <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-4">
+        <h5 class="fw-bold text-dark m-0">
+            <i class="fas fa-graduation-cap text-primary me-2"></i>Программа: {{ item.group.course.name }}
+        </h5>
+        <span class="badge bg-primary rounded-pill px-3 py-1.5 fs-7">Группа: {{ item.group.name }}</span>
+    </div>
+
+    {% if item.journal_entries %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-borderless m-0" style="font-size: 0.925rem;">
+            <thead class="table-light text-secondary">
+                <tr>
+                    <th class="ps-3" style="width: 15%; border-top-left-radius: 8px; border-bottom-left-radius: 8px; background-color: #f8fafc;">Дата урока</th>
+                    <th style="width: 35%; background-color: #f8fafc;">Время занятия</th>
+                    <th style="width: 20%; text-align: center; background-color: #f8fafc;">Посещаемость</th>
+                    <th class="pe-3" style="width: 30%; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background-color: #f8fafc;">Комментарий учителя</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in item.journal_entries %}
+                <tr style="border-bottom: 1px solid #f1f3f5;">
+                    <td class="ps-3 fw-bold text-secondary">{{ entry.schedule.date|date:"d.m.Y" }}</td>
+                    <td class="text-dark fw-semibold">{{ entry.schedule.topic|default:"Тема не указана" }}</td>
+                    <td class="text-center">
+                        {% if entry.attendance %}
+                            <span class="badge px-2.5 py-1 rounded-pill small fw-bold" style="background-color: #d1fae5; color: #065f46;">Присутствовал</span>
+                        {% else %}
+                            <span class="badge px-2.5 py-1 rounded-pill small fw-bold" style="background-color: #fee2e2; color: #991b1b;">Отсутствовал</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted small pe-3">{{ entry.comment|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="alert alert-light border text-center text-muted m-0 py-4" style="border-radius: 12px;">
+            <i class="fas fa-info-circle me-1"></i>По этой группе занятий в журнале ещё не зафиксировано.
+        </div>
+    {% endif %}
+
+</div>
+{% empty %}
+<div class="card border-0 shadow-sm p-5 text-center text-muted rounded-4" style="background: #fff;">
+    <i class="far fa-calendar-times fa-3x mb-3 text-black-50 opacity-50"></i>
+    <h5 class="text-secondary fw-bold">Учебные группы отсутствуют</h5>
+    <p class="text-muted small m-0">Ты пока не зачислен ни в одну учебную группу лагеря. Журнал будет доступен после зачисления.</p>
+</div>
+{% endfor %}
+{% endblock %}

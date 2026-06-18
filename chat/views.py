@@ -143,9 +143,27 @@ def chat_detail(request, room_id):
 
     available_users = []
     if room.room_type == "group" and (room.created_by == user or is_teacher):
-        available_users = User.objects.exclude(id__in=room.participants.all()).exclude(
-            id=user.id
-        )
+        from teacher.models import GroupMember
+        from accounts.models import Child
+        
+        # Если чат привязан к конкретной учебной группе
+        if room.teacher_group_id:
+            # 1. Получаем ID детей этой группы
+            child_ids = GroupMember.objects.filter(
+                group_id=room.teacher_group_id
+            ).values_list('child_id', flat=True)
+            
+            # 2. Получаем родителей этих детей и исключаем тех, кто уже в чате
+            available_users = User.objects.filter(
+                children__id__in=child_ids
+            ).exclude(
+                id__in=room.participants.values_list('id', flat=True)
+            ).distinct()
+        else:
+            # Стандартная логика, если чат не привязан к группе (например, админский)
+            available_users = User.objects.exclude(
+                id__in=room.participants.values_list('id', flat=True)
+            ).exclude(id=user.id)
 
     chat_is_disabled = False
     if room.teacher_group_id and room.teacher_group.is_completed:
@@ -266,20 +284,36 @@ def restore_for_user(request, room_id):
 def invite_to_group_chat(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
     is_teacher_user = request.user.groups.filter(name="Преподаватель").exists()
-    if room.room_type != "group" or (
-        room.created_by != request.user and not is_teacher_user
-    ):
+    
+    if room.room_type != "group" or (room.created_by != request.user and not is_teacher_user):
         messages.error(request, "У вас нет прав для управления участниками этого чата.")
         return redirect("chat:chat_detail", room_id=room.id)
+        
     if request.method == "POST":
         user_id = request.POST.get("user_id")
         new_user = get_object_or_404(User, id=user_id)
+        
+        # ЗАЩИТА: Проверяем, имеет ли право препод добавлять этого юзера
+        if is_teacher_user and room.teacher_group_id:
+            from teacher.models import GroupMember
+            # Допустимые родители для этой группы
+            valid_parent_ids = User.objects.filter(
+                children__id__in=GroupMember.objects.filter(
+                    group_id=room.teacher_group_id
+                ).values_list('child_id', flat=True)
+            ).values_list('id', flat=True)
+            
+            if new_user.id not in valid_parent_ids and not new_user.is_staff:
+                messages.error(request, "Ошибка безопасности: Пользователь не относится к этой группе.")
+                return redirect("chat:chat_detail", room_id=room.id)
+
         if new_user in room.participants.all():
             messages.warning(request, "Пользователь уже в чате.")
         else:
             room.participants.add(new_user)
             room.deleted_for.remove(new_user)
             messages.success(request, f"{new_user.get_full_name()} добавлен в чат.")
+            
     return redirect("chat:chat_detail", room_id=room.id)
 
 

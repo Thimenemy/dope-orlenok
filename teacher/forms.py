@@ -8,8 +8,11 @@ class GroupForm(forms.ModelForm):
         model = Group
         fields = ['name', 'course', 'start_date', 'end_date', 'max_students']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Например: Группа 1А'}),
+            'course': forms.Select(attrs={'class': 'form-select'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'max_students': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
         }
 
 class AddStudentForm(forms.Form):
